@@ -4,7 +4,7 @@ import { CreateBuildingDto, UpdateBuildingDto } from './dto';
 
 @Injectable()
 export class BuildingsService {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService) {}
 
   /**
    * Tạo mới một tòa nhà
@@ -23,7 +23,7 @@ export class BuildingsService {
     const buildings = await this.prisma.building.findMany({
       include: {
         rooms: {
-          select: { status: true },
+          select: { status: true, price: true },
         },
       },
       orderBy: {
@@ -36,7 +36,11 @@ export class BuildingsService {
       totalRooms: b.rooms.length,
       availableRooms: b.rooms.filter((r) => r.status === 'AVAILABLE').length,
       rentedRooms: b.rooms.filter((r) => r.status === 'RENTED').length,
-      maintenanceRooms: b.rooms.filter((r) => r.status === 'MAINTENANCE').length,
+      maintenanceRooms: b.rooms.filter((r) => r.status === 'MAINTENANCE')
+        .length,
+      totalRevenue: b.rooms
+        .filter((r) => r.status === 'RENTED')
+        .reduce((sum, r) => sum + r.price, 0),
       rooms: undefined, // Hide detailed list to keep response light
     }));
   }

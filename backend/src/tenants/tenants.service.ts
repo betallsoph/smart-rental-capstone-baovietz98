@@ -1,0 +1,186 @@
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { CreateTenantDto, UpdateTenantDto } from './dto';
+
+@Injectable()
+export class TenantsService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * Tạo khách thuê mới
+   */
+  async create(createTenantDto: CreateTenantDto) {
+    // Kiểm tra số điện thoại đã tồn tại chưa
+    const existingTenant = await this.prisma.tenant.findUnique({
+      where: { phone: createTenantDto.phone },
+    });
+
+    if (existingTenant) {
+      throw new ConflictException(
+        `Số điện thoại ${createTenantDto.phone} đã được đăng ký`,
+      );
+    }
+
+    return this.prisma.tenant.create({
+      data: createTenantDto,
+    });
+  }
+
+  /**
+   * Lấy danh sách tất cả khách thuê
+   */
+  async findAll() {
+    return this.prisma.tenant.findMany({
+      include: {
+        contracts: {
+          where: { isActive: true },
+          include: {
+            room: {
+              include: {
+                building: true,
+              },
+            },
+          },
+        },
+        _count: {
+          select: { contracts: true },
+        },
+      },
+      orderBy: { fullName: 'asc' },
+    });
+  }
+
+  /**
+   * Tìm kiếm khách thuê theo tên hoặc số điện thoại
+   */
+  async search(query: string) {
+    return this.prisma.tenant.findMany({
+      where: {
+        OR: [
+          { fullName: { contains: query, mode: 'insensitive' } },
+          { phone: { contains: query } },
+          { cccd: { contains: query } },
+        ],
+      },
+      include: {
+        contracts: {
+          where: { isActive: true },
+          include: {
+            room: {
+              include: {
+                building: true,
+              },
+            },
+          },
+        },
+        _count: {
+          select: { contracts: true },
+        },
+      },
+    });
+  }
+
+  /**
+   * Lấy chi tiết khách thuê theo ID
+   */
+  async findOne(id: number) {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id },
+      include: {
+        contracts: {
+          include: {
+            room: {
+              include: {
+                building: { select: { id: true, name: true } },
+              },
+            },
+          },
+          orderBy: { startDate: 'desc' },
+        },
+      },
+    });
+
+    if (!tenant) {
+      throw new NotFoundException(`Không tìm thấy khách thuê với ID: ${id}`);
+    }
+
+    return tenant;
+  }
+
+  /**
+   * Tìm khách thuê theo số điện thoại
+   */
+  async findByPhone(phone: string) {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { phone },
+      include: {
+        contracts: {
+          where: { isActive: true },
+          include: {
+            room: {
+              include: { building: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!tenant) {
+      throw new NotFoundException(
+        `Không tìm thấy khách thuê với SĐT: ${phone}`,
+      );
+    }
+
+    return tenant;
+  }
+
+  /**
+   * Cập nhật thông tin khách thuê
+   */
+  async update(id: number, updateTenantDto: UpdateTenantDto) {
+    await this.findOne(id);
+
+    // Nếu cập nhật số điện thoại, kiểm tra trùng
+    if (updateTenantDto.phone) {
+      const existingTenant = await this.prisma.tenant.findFirst({
+        where: {
+          phone: updateTenantDto.phone,
+          id: { not: id },
+        },
+      });
+
+      if (existingTenant) {
+        throw new ConflictException(
+          `Số điện thoại ${updateTenantDto.phone} đã được đăng ký`,
+        );
+      }
+    }
+
+    return this.prisma.tenant.update({
+      where: { id },
+      data: updateTenantDto,
+    });
+  }
+
+  /**
+   * Xóa khách thuê
+   * Chỉ xóa được khi không có hợp đồng nào
+   */
+  async remove(id: number) {
+    const tenant = await this.findOne(id);
+
+    if (tenant.contracts.length > 0) {
+      throw new ConflictException(
+        `Không thể xóa khách thuê đang có ${tenant.contracts.length} hợp đồng`,
+      );
+    }
+
+    return this.prisma.tenant.delete({
+      where: { id },
+    });
+  }
+}

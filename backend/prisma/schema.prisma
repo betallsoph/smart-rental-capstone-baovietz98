@@ -1,5 +1,3 @@
-// file: backend/prisma/schema.prisma
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,142 +7,155 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// --------------------------------------
-// 1. NHÓM QUẢN LÝ TÀI SẢN (Asset Management)
-// --------------------------------------
-
 model Building {
-  id          Int      @id @default(autoincrement())
-  name        String   // Tên nhà (VD: Nhà trọ Xanh)
-  address     String?  // Địa chỉ
-  createdAt   DateTime @default(now())
-  
-  rooms       Room[]   // Một nhà có nhiều phòng
+  id        Int      @id @default(autoincrement())
+  name      String
+  address   String?
+  createdAt DateTime @default(now())
+  rooms     Room[]
 }
 
 model Room {
-  id          Int       @id @default(autoincrement())
-  name        String    // Tên phòng (P.101, P.102)
-  area        Float?    // Diện tích (m2)
-  price       Float     // Giá thuê cơ bản
-  maxTenants  Int       @default(2) // Số người tối đa
-  status      RoomStatus @default(AVAILABLE) // Trạng thái
-  
-  buildingId  Int
-  building    Building  @relation(fields: [buildingId], references: [id])
-  
-  assets      Json?     // JSON: Lưu danh sách tài sản (Điều hòa, Nóng lạnh...)
-  contracts   Contract[]
-  issues      Issue[]
+  id         Int        @id @default(autoincrement())
+  name       String
+  floor      Int        @default(1) // Added floor
+  area       Float?
+  price      Float
+  depositPrice Float?     // Added deposit price
+  maxTenants Int        @default(2)
+  status     RoomStatus @default(AVAILABLE)
+  gender     Gender     @default(ALL) // Added gender restriction
+  buildingId Int
+  assets     Json?
+  contracts  Contract[]
+  issues     Issue[]
+  building   Building   @relation(fields: [buildingId], references: [id])
 }
-
-enum RoomStatus {
-  AVAILABLE   // Trống
-  RENTED      // Đang thuê
-  MAINTENANCE // Đang sửa
-}
-
-// --------------------------------------
-// 2. NHÓM CON NGƯỜI (Human Resources)
-// --------------------------------------
 
 model Tenant {
-  id          Int      @id @default(autoincrement())
-  fullName    String
-  phone       String   @unique
-  cccd        String?  // Số căn cước
-  info        Json?    // JSON: Lưu ảnh CCCD mặt trước/sau, quê quán
-  
-  contracts   Contract[] // Một người có thể ký nhiều hợp đồng (theo thời gian)
+  id        Int        @id @default(autoincrement())
+  fullName  String
+  phone     String     @unique
+  cccd      String?
+  info      Json?
+  contracts Contract[]
 }
 
-// --------------------------------------
-// 3. NHÓM NGHIỆP VỤ (Business Logic)
-// --------------------------------------
-
 model Contract {
-  id             Int       @id @default(autoincrement())
+  id             Int              @id @default(autoincrement())
   startDate      DateTime
-  endDate        DateTime? // Có thể null nếu thuê không thời hạn
-  deposit        Float     // Tiền cọc
-  price          Float     // Giá chốt tại thời điểm thuê
-  isActive       Boolean   @default(true)
-  
+  endDate        DateTime?
+  deposit        Float
+  price          Float
+  paymentDay     Int              @default(5) // Added paymentDay
+  isActive       Boolean          @default(true)
   roomId         Int
-  room           Room      @relation(fields: [roomId], references: [id])
-  
   tenantId       Int
-  tenant         Tenant    @relation(fields: [tenantId], references: [id])
-
+  initialIndexes Json?
+  numTenants     Int              @default(1)
+  room           Room             @relation(fields: [roomId], references: [id])
+  tenant         Tenant           @relation(fields: [tenantId], references: [id])
   invoices       Invoice[]
+  readings       ServiceReading[]
 }
 
 model Service {
-  id          Int         @id @default(autoincrement())
-  name        String      // VD: Điện, Nước, Mạng
-  price       Float       // Đơn giá (VD: 3500)
-  unit        String      // Đơn vị: kwh, m3, month, person
-  type        ServiceType // Cách tính
+  id              Int              @id @default(autoincrement())
+  name            String
+  price           Float
+  unit            String
+  type            ServiceType
+  isActive        Boolean          @default(true)
+  calculationType CalculationType  @default(PER_ROOM)
+  readings        ServiceReading[]
 }
 
-enum ServiceType {
-  INDEX   // Tính theo chỉ số (Điện, Nước)
-  FIXED   // Tính cố định (Wifi, Rác)
-}
-
-// --------------------------------------
-// 4. NHÓM TÀI CHÍNH (Finance)
-// --------------------------------------
-
-// Bảng lưu chỉ số điện nước hàng tháng
 model ServiceReading {
-  id          Int      @id @default(autoincrement())
-  month       DateTime // Tháng chốt (VD: 2025-11-01)
-  
-  roomId      Int
-  
-  // Lưu JSON cho linh hoạt. VD: { "dien": { "old": 100, "new": 150 }, "nuoc": ... }
-  readings    Json     
-  
-  totalAmount Float    // Tổng tiền dịch vụ tháng đó
-  invoiceId   Int?     // Gắn với hóa đơn nào (nếu đã tạo)
+  id           Int      @id @default(autoincrement())
+  month        String
+  invoiceId    Int?
+  contractId   Int
+  createdAt    DateTime @default(now())
+  isBilled     Boolean  @default(false)
+  newIndex     Float
+  oldIndex     Float
+  readingDate  DateTime @default(now())
+  serviceId    Int
+  totalCost    Float
+  unitPrice    Float
+  updatedAt    DateTime @updatedAt
+  usage        Float
+  isMeterReset Boolean  @default(false)
+  note         String?
+  contract     Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  service      Service  @relation(fields: [serviceId], references: [id])
+
+  @@unique([contractId, serviceId, month])
 }
 
 model Invoice {
-  id          Int           @id @default(autoincrement())
-  month       DateTime      // Hóa đơn tháng mấy
-  amount      Float         // Tổng tiền phải trả
-  paidAmount  Float         @default(0) // Đã trả bao nhiêu
-  status      InvoiceStatus @default(UNPAID)
-  
-  // Lưu chi tiết lúc tính tiền để sau này không bị cãi nhau
-  // VD: { "roomPrice": 3tr, "electric": 500k, "water": 100k ... }
-  details     Json          
+  id             Int           @id @default(autoincrement())
+  month          String
+  paidAmount     Float         @default(0)
+  status         InvoiceStatus @default(DRAFT)
+  contractId     Int
+  createdAt      DateTime      @default(now())
+  debtAmount     Float         @default(0)
+  discount       Float         @default(0)
+  dueDate        DateTime?
+  extraCharge    Float         @default(0)
+  lineItems      Json
+  note           String?
+  paymentHistory Json?
+  previousDebt   Float         @default(0)
+  publishedAt    DateTime?
+  roomCharge     Float
+  serviceCharge  Float
+  totalAmount    Float
+  updatedAt      DateTime      @updatedAt
+  contract       Contract      @relation(fields: [contractId], references: [id])
 
-  contractId  Int
-  contract    Contract      @relation(fields: [contractId], references: [id])
-  
-  createdAt   DateTime      @default(now())
+  @@unique([contractId, month])
 }
-
-enum InvoiceStatus {
-  UNPAID  // Chưa trả
-  PARTIAL // Trả thiếu
-  PAID    // Đã trả đủ
-}
-
-// --------------------------------------
-// 5. TIỆN ÍCH
-// --------------------------------------
 
 model Issue {
   id          Int      @id @default(autoincrement())
   title       String
   description String?
-  status      String   @default("OPEN") // OPEN, PROCESSING, DONE
-  
+  status      String   @default("OPEN")
   roomId      Int
-  room        Room     @relation(fields: [roomId], references: [id])
-  
   createdAt   DateTime @default(now())
+  room        Room     @relation(fields: [roomId], references: [id])
+}
+
+enum RoomStatus {
+  AVAILABLE
+  RENTED
+  MAINTENANCE
+}
+
+enum ServiceType {
+  INDEX
+  FIXED
+}
+
+enum CalculationType {
+  PER_ROOM
+  PER_PERSON
+  PER_USAGE
+}
+
+enum InvoiceStatus {
+  DRAFT
+  PUBLISHED
+  PARTIAL
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum Gender {
+  ALL
+  MALE
+  FEMALE
 }

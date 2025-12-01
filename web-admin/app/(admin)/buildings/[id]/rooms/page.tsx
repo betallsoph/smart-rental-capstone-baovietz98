@@ -1,57 +1,68 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
-import { Modal, Form, Input, InputNumber, message, Spin, Empty, Select } from 'antd';
-import { ArrowLeftOutlined, PlusOutlined, UserOutlined, DeleteOutlined, LoadingOutlined, EditOutlined } from '@ant-design/icons';
+import { useState, useEffect, use, useMemo } from 'react';
+import { Form, message, Spin, Empty, Checkbox } from 'antd';
+import { ArrowLeftOutlined, PlusOutlined, LoadingOutlined, FileTextOutlined, SendOutlined, DollarOutlined, ToolOutlined, AppstoreOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import Link from 'next/link';
 import axios from '@/lib/axios-client';
+import CreateRoomModal from '@/components/rooms/CreateRoomModal';
+import RoomListView from '@/components/rooms/RoomListView';
 
-// Hàm format tiền tệ (3000000 -> 3,000,000)
+// Hàm format tiền tệ
 const formatCurrency = (value: number) => 
   new Intl.NumberFormat('vi-VN').format(value);
 
-// Bộ lọc
-const filters = [
-  { id: 'ALL', label: 'Tất cả' },
-  { id: 'AVAILABLE', label: 'Phòng trống' },
-  { id: 'RENTED', label: 'Đang thuê' },
-  { id: 'MAINTENANCE', label: 'Đang sửa' },
-];
-
 export default function RoomMatrixPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params); // Unwrap params
+  const { id } = use(params);
+  
+  // Data State
   const [rooms, setRooms] = useState<any[]>([]);
+  const [buildings, setBuildings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // UI State
   const [activeFilter, setActiveFilter] = useState('ALL');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedRooms, setSelectedRooms] = useState<number[]>([]);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [viewMode, setViewMode] = useState<'GRID' | 'LIST'>('GRID');
+  
+  // Form
   const [form] = Form.useForm();
 
-  // 1. GỌI API LẤY DANH SÁCH
-  const fetchRooms = async () => {
+  // 1. FETCH DATA
+  const fetchData = async () => {
     setLoading(true);
     try {
-      // Endpoint: /rooms/by-building/{id}
-      const res = await axios.get(`/rooms/by-building/${id}`);
-      setRooms(res.data);
+      const [roomsRes, buildingsRes] = await Promise.all([
+        axios.get(`/rooms/by-building/${id}`),
+        axios.get('/buildings')
+      ]);
+      setRooms(roomsRes.data);
+      setBuildings(buildingsRes.data);
     } catch (error) {
       console.error(error);
-      message.error('Không thể tải danh sách phòng!');
+      message.error('Không thể tải dữ liệu!');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchRooms();
+    fetchData();
+    setSelectedRooms([]); // Reset selection on building change
   }, [id]);
 
-  // 2. GỌI API TẠO PHÒNG
+  // 2. ACTIONS
   const handleCreateRoom = async (values: any) => {
     try {
       const payload = {
         ...values,
         price: Number(values.price),
+        depositPrice: values.depositPrice ? Number(values.depositPrice) : undefined,
         area: values.area ? Number(values.area) : undefined,
+        floor: values.floor ? Number(values.floor) : 1,
+        gender: values.gender || 'ALL',
         maxTenants: values.maxTenants ? Number(values.maxTenants) : 2,
         buildingId: Number(id),
       };
@@ -60,94 +71,139 @@ export default function RoomMatrixPage({ params }: { params: Promise<{ id: strin
       message.success('Thêm phòng thành công! 🎉');
       setIsModalOpen(false);
       form.resetFields();
-      fetchRooms(); // Load lại dữ liệu thật
+      fetchData();
     } catch (error) {
-      console.error(error);
-      message.error('Lỗi khi thêm phòng (Kiểm tra lại tên hoặc giá)');
+      message.error('Lỗi khi thêm phòng');
     }
   };
 
-  // 3. GỌI API XÓA PHÒNG
-  const handleDeleteRoom = (roomId: number, roomName: string) => {
-    Modal.confirm({
-      title: `XÓA PHÒNG ${roomName}?`,
-      content: 'Dữ liệu không thể khôi phục.',
-      okText: 'XÓA',
-      okType: 'danger',
-      cancelText: 'HỦY',
-      className: 'neobrutalism-modal',
-      okButtonProps: { className: 'bg-red-500 text-black border-2 border-black font-bold shadow-[2px_2px_0px_0px_black] rounded-none hover:bg-red-400' },
-      cancelButtonProps: { className: 'border-2 border-black font-bold text-black rounded-none' },
-      onOk: async () => {
-        try {
-          await axios.delete(`/rooms/${roomId}`);
-          message.success('Đã xóa phòng!');
-          fetchRooms();
-        } catch (error) {
-          message.error('Không thể xóa phòng này');
-        }
-      },
-    });
+  // 3. BULK ACTIONS
+  const toggleSelection = (roomId: number) => {
+    setSelectedRooms(prev => 
+      prev.includes(roomId) ? prev.filter(id => id !== roomId) : [...prev, roomId]
+    );
   };
 
-  // Logic lọc hiển thị
-  const filteredRooms = rooms.filter(room => 
-    activeFilter === 'ALL' ? true : room.status === activeFilter
-  );
-
-  // Helper: Màu sắc trạng thái
-  const getStatusStyle = (status: string) => {
-    switch (status) {
-      case 'RENTED': return 'bg-[#ffcdfa]'; // Hồng
-      case 'AVAILABLE': return 'bg-white';  // Trắng
-      case 'MAINTENANCE': return 'bg-[#fff59d]'; // Vàng
-      default: return 'bg-white';
-    }
+  const handleBulkAction = (action: string) => {
+    message.info(`Đang xử lý ${action} cho ${selectedRooms.length} phòng... (Tính năng đang phát triển)`);
+    // Implement actual logic here
   };
+
+  // 4. FILTER LOGIC
+  const filteredRooms = useMemo(() => {
+    return rooms.filter(room => activeFilter === 'ALL' ? true : room.status === activeFilter);
+  }, [rooms, activeFilter]);
+
+  const stats = useMemo(() => {
+    return {
+      available: rooms.filter(r => r.status === 'AVAILABLE').length,
+      rented: rooms.filter(r => r.status === 'RENTED').length,
+      maintenance: rooms.filter(r => r.status === 'MAINTENANCE').length,
+    };
+  }, [rooms]);
 
   return (
-    <div className="min-h-screen bg-[#F4F4F0] p-8 font-sans">
-      {/* HEADER */}
+    <div className="min-h-screen bg-[#F4F4F0] p-4 md:p-8 font-sans pb-24">
+      {/* HEADER & BUILDING TABS */}
       <div className="mb-8">
-        <Link href="/buildings">
-          <button className="flex items-center gap-2 font-bold hover:underline mb-4">
-            <ArrowLeftOutlined /> Quay lại danh sách nhà
-          </button>
-        </Link>
+        <div className="flex justify-between items-center mb-4">
+            <Link href="/buildings">
+            <button className="flex items-center gap-2 font-bold hover:underline">
+                <ArrowLeftOutlined /> Quay lại danh sách nhà
+            </button>
+            </Link>
+            <div className="flex items-center gap-4">
+                {/* VIEW MODE TOGGLE */}
+                <div className="flex bg-white border-2 border-black p-1 gap-1 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                    <button 
+                        onClick={() => setViewMode('GRID')}
+                        className={`p-2 transition-all ${viewMode === 'GRID' ? 'bg-black text-white' : 'hover:bg-gray-100'}`}
+                        title="Xem lưới"
+                    >
+                        <AppstoreOutlined className="text-lg" />
+                    </button>
+                    <button 
+                        onClick={() => setViewMode('LIST')}
+                        className={`p-2 transition-all ${viewMode === 'LIST' ? 'bg-black text-white' : 'hover:bg-gray-100'}`}
+                        title="Xem danh sách"
+                    >
+                        <UnorderedListOutlined className="text-lg" />
+                    </button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold uppercase text-gray-500">Chế độ chọn:</span>
+                    <button 
+                        onClick={() => {
+                            setIsSelectionMode(!isSelectionMode);
+                            setSelectedRooms([]);
+                        }}
+                        className={`px-3 py-1 border-2 border-black font-bold text-xs uppercase transition-all ${isSelectionMode ? 'bg-black text-white' : 'bg-white hover:bg-gray-100'}`}
+                    >
+                        {isSelectionMode ? 'Đang Bật' : 'Đang Tắt'}
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        {/* BUILDING TABS (SCROLLABLE - FOLDER STYLE) */}
+        <div className="flex overflow-x-auto gap-0 no-scrollbar mb-0 border-b-2 border-black items-end px-4">
+            {buildings.map(b => {
+                const isActive = Number(id) === b.id;
+                return (
+                <Link key={b.id} href={`/buildings/${b.id}/rooms`} scroll={false}>
+                    <div className={`
+                        whitespace-nowrap px-8 py-3 font-bold uppercase cursor-pointer transition-all border-2 border-black border-b-0 rounded-t-lg mr-[-2px]
+                        ${isActive 
+                            ? 'bg-[#FF90E8] text-black z-10 relative top-[2px] h-14 flex items-center shadow-[0px_-4px_0px_0px_rgba(0,0,0,0)]' 
+                            : 'bg-white text-gray-500 hover:bg-gray-100 hover:text-black h-12 flex items-center'
+                        }
+                    `}>
+                        {b.name}
+                    </div>
+                </Link>
+            )})}
+        </div>
         
-        <div className="flex justify-between items-end border-b-2 border-black pb-4">
+        {/* ACTION BAR & STATUS FILTER */}
+        <div className="flex flex-col md:flex-row justify-between items-end gap-4 border-b-2 border-black pb-6 pt-8 bg-white px-4 border-x-2 border-t-0 shadow-[4px_4px_0px_0px_black] mb-8">
           <div>
-            <h1 className="text-4xl font-black uppercase tracking-tighter">QUẢN LÝ PHÒNG</h1>
-            <p className="text-gray-600 font-mono mt-1">Danh sách phòng & Trạng thái</p>
+            <h1 className="text-4xl font-black uppercase tracking-tighter mb-4">QUẢN LÝ PHÒNG</h1>
+            {/* LIVE STATUS BAR (PILLS) */}
+            <div className="flex flex-wrap gap-3">
+                <button 
+                    onClick={() => setActiveFilter('ALL')} 
+                    className={`px-4 py-2 rounded-full border-2 border-black font-bold text-sm transition-all ${activeFilter === 'ALL' ? 'bg-black text-white shadow-[2px_2px_0px_0px_rgba(100,100,100,0.5)]' : 'bg-white hover:bg-gray-100'}`}
+                >
+                    TẤT CẢ: {rooms.length}
+                </button>
+                <button 
+                    onClick={() => setActiveFilter('AVAILABLE')} 
+                    className={`px-4 py-2 rounded-full border-2 border-black font-bold text-sm transition-all ${activeFilter === 'AVAILABLE' ? 'bg-[#00E054] text-black shadow-[2px_2px_0px_0px_black]' : 'bg-white hover:bg-green-50'}`}
+                >
+                    TRỐNG: {stats.available}
+                </button>
+                <button 
+                    onClick={() => setActiveFilter('RENTED')} 
+                    className={`px-4 py-2 rounded-full border-2 border-black font-bold text-sm transition-all ${activeFilter === 'RENTED' ? 'bg-[#ffcdfa] text-black shadow-[2px_2px_0px_0px_black]' : 'bg-white hover:bg-pink-50'}`}
+                >
+                    ĐANG Ở: {stats.rented}
+                </button>
+                <button 
+                    onClick={() => setActiveFilter('MAINTENANCE')} 
+                    className={`px-4 py-2 rounded-full border-2 border-black font-bold text-sm transition-all ${activeFilter === 'MAINTENANCE' ? 'bg-[#fff59d] text-black shadow-[2px_2px_0px_0px_black]' : 'bg-white hover:bg-yellow-50'}`}
+                >
+                    BẢO TRÌ: {stats.maintenance}
+                </button>
+            </div>
           </div>
           
-          <div className="flex gap-4 items-center">
-             {/* Bộ lọc Pills */}
-             <div className="flex gap-2">
-                {filters.map(f => (
-                  <button 
-                    key={f.id}
-                    onClick={() => setActiveFilter(f.id)}
-                    className={`
-                      px-4 py-2 border-2 border-black text-xs font-bold rounded-full transition-all
-                      ${activeFilter === f.id 
-                        ? 'bg-black text-white shadow-[2px_2px_0px_0px_#FF90E8] -translate-y-0.5 -translate-x-0.5' 
-                        : 'bg-white hover:bg-[#FFC900] hover:shadow-[2px_2px_0px_0px_black] hover:-translate-y-0.5 hover:-translate-x-0.5'
-                      }
-                    `}
-                  >
-                    {f.label}
-                  </button>
-                ))}
-             </div>
-
-            <button 
-              onClick={() => setIsModalOpen(true)}
-              className="bg-[#FFC900] text-black border-2 border-black px-6 py-3 font-bold uppercase shadow-[4px_4px_0px_0px_black] hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-[2px_2px_0px_0px_black] transition-all flex items-center justify-center gap-2"
-            >
-              <PlusOutlined /> Thêm phòng
-            </button>
-          </div>
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="bg-[#FFC900] text-black border-2 border-black px-6 py-3 font-bold uppercase shadow-[4px_4px_0px_0px_black] hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-[2px_2px_0px_0px_black] transition-all flex items-center justify-center gap-2"
+          >
+            <PlusOutlined /> Thêm phòng
+          </button>
         </div>
       </div>
 
@@ -157,164 +213,136 @@ export default function RoomMatrixPage({ params }: { params: Promise<{ id: strin
           <Spin indicator={<LoadingOutlined style={{ fontSize: 48, color: 'black' }} spin />} />
         </div>
       ) : (
-        /* ROOM MATRIX GRID */
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-          {filteredRooms.length === 0 && (
-             <div className="col-span-full py-10 flex justify-center">
-                <Empty description={<span className="font-mono font-bold text-lg text-gray-500">Chưa có phòng nào. Hãy tạo phòng đầu tiên ngay!</span>} />
-             </div>
-          )}
-
-          {filteredRooms.map((room) => (
-            <div 
-              key={room.id}
-              className={`
-                relative p-4 border-2 border-black h-48 flex flex-col justify-between group bg-white
-                shadow-[6px_6px_0px_0px_black] hover:-translate-y-1 hover:shadow-[8px_8px_0px_0px_black] transition-all
-              `}
-            >
-              {/* STATUS TAG (Top-Left, Relative) */}
-              <div className="mb-2">
-                 {room.status === 'RENTED' ? (
-                    <span className="bg-[#ffcdfa] border-2 border-black px-2 py-0.5 text-[10px] font-bold rounded-full shadow-[2px_2px_0px_0px_black]">
-                      Đang thuê
-                    </span>
-                 ) : room.status === 'MAINTENANCE' ? (
-                    <span className="bg-[#fff59d] border-2 border-black px-2 py-0.5 text-[10px] font-bold rounded-full shadow-[2px_2px_0px_0px_black]">
-                      Đang sửa
-                    </span>
-                 ) : (
-                    <span className="bg-green-100 text-green-800 border-2 border-black px-2 py-0.5 text-[10px] font-bold rounded-full shadow-[2px_2px_0px_0px_black]">
-                      Trống
-                    </span>
-                 )}
-              </div>
-
-              {/* ACTION BUTTONS (Top-Right, Visible on Hover) */}
-              <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
-                <button 
-                  className="bg-white border-2 border-black p-1 hover:bg-[#00FFFF] transition-colors shadow-[2px_2px_0px_0px_black]"
-                  title="Sửa"
-                >
-                  <EditOutlined className="text-black" />
-                </button>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); handleDeleteRoom(room.id, room.name); }}
-                  className="bg-white border-2 border-black p-1 hover:bg-[#FF4D4D] hover:text-white transition-colors shadow-[2px_2px_0px_0px_black]"
-                  title="Xóa"
-                >
-                  <DeleteOutlined />
-                </button>
-              </div>
-
-              <div className="flex justify-between items-start">
-                <span className="font-black text-2xl">{room.name}</span>
-              </div>
-
-              <div className="font-mono text-sm mt-auto">
-                 <div className="font-bold border-b-2 border-black w-max mb-2 text-lg">
-                    {formatCurrency(room.price)} ₫
-                 </div>
-
-                 {/* Assets Pills */}
-                 {room.assets && Array.isArray(room.assets) && room.assets.length > 0 ? (
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {room.assets.map((asset: string, index: number) => (
-                        <span key={index} className="border border-black rounded-md px-1.5 py-[2px] text-[10px] font-bold bg-gray-50 text-gray-600">
-                          {asset}
-                        </span>
-                      ))}
-                    </div>
-                 ) : (
-                    <div className="mt-2 text-[10px] text-gray-400 italic">Không có tiện ích</div>
-                 )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* CUSTOM MODAL - Gumroad Style */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsModalOpen(false)}></div>
-          <div className="relative w-full max-w-lg bg-white border-2 border-black shadow-[8px_8px_0px_#000] p-8 animate-in fade-in zoom-in duration-200">
-            <button 
-              onClick={() => setIsModalOpen(false)} 
-              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center border-2 border-black hover:bg-black hover:text-white transition-colors font-bold"
-            >
-              ✕
-            </button>
-            <h2 className="text-3xl font-bold mb-6 uppercase">Thêm phòng mới</h2>
-            
-            <Form form={form} onFinish={handleCreateRoom} layout="vertical" className="font-mono">
-              <div className="grid grid-cols-2 gap-6">
-                <Form.Item label={<span className="font-bold text-lg">Tên phòng</span>} name="name" rules={[{ required: true, message: 'Nhập tên phòng!' }]}>
-                  <Input className="gumroad-input" placeholder="VD: P.101" />
-                </Form.Item>
-                
-                <Form.Item label={<span className="font-bold text-lg">Giá thuê</span>} name="price" rules={[{ required: true, message: 'Nhập giá tiền!' }]}>
-                  <InputNumber 
-                    className="w-full border-2 border-black shadow-[4px_4px_0px_#000] text-lg"
-                    size="large"
-                    formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                    parser={(value) => value?.replace(/\$\s?|(,*)/g, '') as unknown as number}
-                    placeholder="3,500,000"
-                    style={{ borderRadius: 0 }}
-                    addonAfter="₫"
-                  />
-                </Form.Item>
-              </div>
-
-              <div className="grid grid-cols-2 gap-6">
-                <Form.Item label={<span className="font-bold text-lg">Diện tích</span>} name="area">
-                   <InputNumber 
-                      className="w-full border-2 border-black shadow-[4px_4px_0px_#000] text-lg" 
-                      size="large"
-                      placeholder="25" 
-                      style={{ borderRadius: 0 }}
-                      addonAfter="m²"
-                   />
-                </Form.Item>
-                <Form.Item label={<span className="font-bold text-lg">Số người tối đa</span>} name="maxTenants" initialValue={2}>
-                   <InputNumber 
-                      className="w-full border-2 border-black shadow-[4px_4px_0px_#000] text-lg" 
-                      size="large"
-                      style={{ borderRadius: 0 }}
-                   />
-                </Form.Item>
-              </div>
-
-              <Form.Item label={<span className="font-bold text-lg">Tiện ích / Tài sản</span>} name="assets">
-                <Select
-                  mode="tags"
-                  style={{ width: '100%', height: '50px' }}
-                  placeholder="Nhập tài sản..."
-                  options={[
-                    { value: 'Điều hòa', label: 'Điều hòa' },
-                    { value: 'Nóng lạnh', label: 'Nóng lạnh' },
-                    { value: 'Tủ lạnh', label: 'Tủ lạnh' },
-                    { value: 'Máy giặt', label: 'Máy giặt' },
-                    { value: 'Giường', label: 'Giường' },
-                    { value: 'Tủ quần áo', label: 'Tủ quần áo' },
-                  ]}
-                  className="gumroad-select-override"
-                  variant="borderless"
+        <>
+            {viewMode === 'LIST' ? (
+                /* ROOM LIST VIEW */
+                <RoomListView 
+                    rooms={filteredRooms} 
+                    loading={loading} 
+                    onSelectRoom={(roomId) => {
+                        if (isSelectionMode) toggleSelection(roomId);
+                        else console.log('View room details', roomId);
+                    }} 
                 />
-              </Form.Item>
+            ) : (
+                /* ROOM MATRIX GRID */
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                {filteredRooms.length === 0 && (
+                    <div className="col-span-full py-10 flex justify-center">
+                        <Empty description={<span className="font-mono font-bold text-lg text-gray-500">Không tìm thấy phòng nào.</span>} />
+                    </div>
+                )}
 
-              <div className="flex justify-end gap-4 mt-8 pt-4 border-t-2 border-black border-dashed">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="gumroad-btn-secondary py-2 px-4 text-base">
-                  Hủy
-                </button>
-                <button type="submit" className="gumroad-btn-primary py-2 px-4 text-base bg-[#FF90E8] hover:bg-[#FFC900] text-black">
-                  Lưu phòng
-                </button>
-              </div>
-            </Form>
-          </div>
-        </div>
+                {filteredRooms.map((room) => {
+                    const isSelected = selectedRooms.includes(room.id);
+                    return (
+                    <div 
+                    key={room.id}
+                    onClick={() => isSelectionMode && toggleSelection(room.id)}
+                    className={`
+                        relative p-4 border-2 h-72 flex flex-col justify-between group bg-white transition-all cursor-pointer
+                        ${isSelected ? 'border-[#FF4D4D] bg-red-50 shadow-[8px_8px_0px_0px_#FF4D4D]' : 'border-black shadow-[6px_6px_0px_0px_black] hover:-translate-y-1 hover:shadow-[8px_8px_0px_0px_black]'}
+                    `}
+                    >
+                    {/* SELECTION CHECKBOX (Visible in mode or hovered) */}
+                    {(isSelectionMode || isSelected) && (
+                        <div className="absolute top-2 left-2 z-20">
+                            <Checkbox checked={isSelected} className="scale-125" />
+                        </div>
+                    )}
+
+                    {/* STATUS TAG */}
+                    <div className={`absolute top-0 right-0 px-3 py-1 text-xs font-bold border-l-2 border-b-2 border-black ${
+                        room.status === 'RENTED' ? 'bg-[#ffcdfa]' : 
+                        room.status === 'MAINTENANCE' ? 'bg-[#fff59d]' : 'bg-[#00E054] text-white'
+                    }`}>
+                        {room.status === 'RENTED' ? 'ĐANG THUÊ' : room.status === 'MAINTENANCE' ? 'BẢO TRÌ' : 'TRỐNG'}
+                    </div>
+
+                    {/* ROOM NAME & PRICE */}
+                    <div className="mt-6">
+                        <h3 className="font-black text-3xl mb-1">{room.name}</h3>
+                        <div className="font-mono font-bold text-gray-500 border-b-2 border-black inline-block mb-2">
+                            {formatCurrency(room.price)} ₫
+                        </div>
+                        
+                        {/* ASSETS DISPLAY */}
+                        {room.assets && Array.isArray(room.assets) && room.assets.length > 0 ? (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                                {room.assets.slice(0, 4).map((asset: string, idx: number) => (
+                                    <span key={idx} className="text-[10px] font-bold border border-black px-1 bg-gray-50 text-gray-600">
+                                        {asset}
+                                    </span>
+                                ))}
+                                {room.assets.length > 4 && (
+                                    <span className="text-[10px] font-bold border border-black px-1 bg-gray-50 text-gray-600">
+                                        +{room.assets.length - 4}
+                                    </span>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="text-[10px] italic text-gray-400 mt-1">Chưa có tài sản</div>
+                        )}
+                    </div>
+
+                    {/* SMART ACTIONS */}
+                    <div className="mt-auto pt-4">
+                        {room.status === 'AVAILABLE' ? (
+                            <button className="w-full bg-[#00E054] text-black border-2 border-black font-bold py-2 shadow-[2px_2px_0px_0px_black] hover:translate-y-[1px] hover:translate-x-[1px] hover:shadow-none transition-all flex items-center justify-center gap-2">
+                                <FileTextOutlined /> HỢP ĐỒNG MỚI
+                            </button>
+                        ) : room.status === 'RENTED' ? (
+                            <div className="grid grid-cols-5 gap-2">
+                                <button className="col-span-4 bg-[#ffcdfa] text-black border-2 border-black font-bold py-2 shadow-[2px_2px_0px_0px_black] hover:translate-y-[1px] hover:translate-x-[1px] hover:shadow-none transition-all flex items-center justify-center gap-2 text-xs">
+                                    <DollarOutlined /> LẬP HÓA ĐƠN
+                                </button>
+                                <button className="col-span-1 bg-white border-2 border-black flex items-center justify-center hover:bg-gray-100 shadow-[2px_2px_0px_0px_black] hover:shadow-none hover:translate-y-[1px] hover:translate-x-[1px] transition-all">
+                                    <ToolOutlined className="text-lg" />
+                                </button>
+                            </div>
+                        ) : (
+                            <button className="w-full bg-gray-200 text-gray-500 border-2 border-black font-bold py-2 cursor-not-allowed">
+                                ĐANG BẢO TRÌ
+                            </button>
+                        )}
+                    </div>
+                    </div>
+                )})}
+                </div>
+            )}
+        </>
       )}
+
+      {/* BULK ACTIONS TOOLBAR */}
+      {selectedRooms.length > 0 && (
+          <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 bg-black text-white p-4 border-2 border-white shadow-[8px_8px_0px_0px_rgba(0,0,0,0.5)] flex items-center gap-6 z-50 animate-in slide-in-from-bottom-10 duration-300">
+              <div className="font-bold text-lg border-r border-gray-600 pr-6">
+                  Đã chọn <span className="text-[#FF90E8] text-2xl">{selectedRooms.length}</span> phòng
+              </div>
+              <div className="flex gap-4">
+                  <button onClick={() => handleBulkAction('Tăng giá')} className="flex items-center gap-2 hover:text-[#FF90E8] font-bold transition-colors">
+                      <DollarOutlined /> Tăng giá đồng loạt
+                  </button>
+                  <button onClick={() => handleBulkAction('Gửi thông báo')} className="flex items-center gap-2 hover:text-[#FF90E8] font-bold transition-colors">
+                      <SendOutlined /> Gửi thông báo (Zalo)
+                  </button>
+                  <button onClick={() => handleBulkAction('Bảo trì')} className="flex items-center gap-2 hover:text-[#FF90E8] font-bold transition-colors">
+                      <ToolOutlined /> Báo bảo trì
+                  </button>
+              </div>
+              <button onClick={() => setSelectedRooms([])} className="ml-4 text-gray-400 hover:text-white">
+                  Hủy chọn
+              </button>
+          </div>
+      )}
+
+      {/* CREATE ROOM MODAL */}
+      <CreateRoomModal 
+        open={isModalOpen} 
+        onCancel={() => setIsModalOpen(false)} 
+        onConfirm={handleCreateRoom}
+        loading={loading}
+      />
     </div>
   );
 }

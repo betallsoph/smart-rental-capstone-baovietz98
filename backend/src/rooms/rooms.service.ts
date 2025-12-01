@@ -9,7 +9,7 @@ import { CreateRoomDto, UpdateRoomDto } from './dto';
 
 @Injectable()
 export class RoomsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   /**
    * Tạo phòng mới
@@ -86,6 +86,17 @@ export class RoomsService {
     return this.prisma.room.findMany({
       where: { buildingId },
       include: {
+        contracts: {
+          where: { isActive: true },
+          include: {
+            tenant: true,
+            invoices: {
+              where: {
+                status: { in: ['PARTIAL', 'OVERDUE', 'PUBLISHED'] }, // Only unpaid/partial invoices
+              },
+            },
+          },
+        },
         _count: {
           select: { contracts: true },
         },

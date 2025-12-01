@@ -12,7 +12,10 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  console.log('DEBUG: DATABASE_URL is', process.env.DATABASE_URL ? 'DEFINED' : 'UNDEFINED');
+  console.log(
+    'DEBUG: DATABASE_URL is',
+    process.env.DATABASE_URL ? 'DEFINED' : 'UNDEFINED',
+  );
   console.log('DEBUG: Current Directory:', process.cwd());
 
   // 1. Cấu hình CORS (Để Web Admin và App Mobile gọi được API)
@@ -42,9 +45,9 @@ async function bootstrap() {
   SwaggerModule.setup('api', app, document); // Đường dẫn sẽ là /api
 
   // 4. Chạy Server
-  // 4. Chạy Server
-  await app.listen(4000);
-  console.log(`Application is running on: http://localhost:4000`);
-  console.log(`Swagger Docs is running on: http://localhost:4000/api`);
+  const port = process.env.PORT || 4000;
+  await app.listen(port);
+  console.log(`Application is running on: http://localhost:${port}`);
+  console.log(`Swagger Docs is running on: http://localhost:${port}/api`);
 }
 bootstrap();

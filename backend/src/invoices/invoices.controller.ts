@@ -1,0 +1,174 @@
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  Query,
+  ParseIntPipe,
+} from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiQuery, ApiParam } from '@nestjs/swagger';
+import { InvoiceStatus } from '@prisma/client';
+import { InvoicesService } from './invoices.service';
+import {
+  GenerateInvoiceDto,
+  UpdateInvoiceDto,
+  RecordPaymentDto,
+} from './dto';
+
+@ApiTags('Invoices - Hóa đơn')
+@Controller('invoices')
+export class InvoicesController {
+  constructor(private readonly invoicesService: InvoicesService) {}
+
+  /**
+   * BƯỚC 1: Tạo hóa đơn nháp
+   */
+  @Post('generate')
+  @ApiOperation({
+    summary: 'Tạo hóa đơn nháp (tự động tính toán tiền phòng, điện, nước...)',
+  })
+  generateDraft(@Body() dto: GenerateInvoiceDto) {
+    return this.invoicesService.generateDraft(dto);
+  }
+
+  /**
+   * Tạo hóa đơn hàng loạt cho tất cả hợp đồng
+   */
+  @Post('generate-bulk')
+  @ApiOperation({
+    summary: 'Tạo hóa đơn hàng loạt cho tất cả hợp đồng active',
+  })
+  @ApiQuery({ name: 'month', example: '11-2025', description: 'Tháng hóa đơn' })
+  generateBulkDrafts(@Query('month') month: string) {
+    return this.invoicesService.generateBulkDrafts(month);
+  }
+
+  /**
+   * BƯỚC 2: Cập nhật hóa đơn nháp (thêm phát sinh, giảm giá)
+   */
+  @Patch(':id')
+  @ApiOperation({
+    summary: 'Cập nhật hóa đơn nháp (thêm phát sinh, giảm giá...)',
+  })
+  updateDraft(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateInvoiceDto,
+  ) {
+    return this.invoicesService.updateDraft(id, dto);
+  }
+
+  /**
+   * BƯỚC 3: Phát hành hóa đơn
+   */
+  @Patch(':id/publish')
+  @ApiOperation({
+    summary: 'Phát hành hóa đơn (DRAFT -> PUBLISHED)',
+  })
+  publish(@Param('id', ParseIntPipe) id: number) {
+    return this.invoicesService.publish(id);
+  }
+
+  /**
+   * Hủy phát hành (về DRAFT)
+   */
+  @Patch(':id/unpublish')
+  @ApiOperation({
+    summary: 'Hủy phát hành hóa đơn (PUBLISHED -> DRAFT)',
+  })
+  unpublish(@Param('id', ParseIntPipe) id: number) {
+    return this.invoicesService.unpublish(id);
+  }
+
+  /**
+   * BƯỚC 5: Ghi nhận thanh toán
+   */
+  @Post(':id/payment')
+  @ApiOperation({
+    summary: 'Ghi nhận thanh toán (có thể trả nhiều lần)',
+  })
+  recordPayment(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: RecordPaymentDto,
+  ) {
+    return this.invoicesService.recordPayment(id, dto);
+  }
+
+  /**
+   * Hủy hóa đơn
+   */
+  @Patch(':id/cancel')
+  @ApiOperation({ summary: 'Hủy hóa đơn' })
+  cancel(@Param('id', ParseIntPipe) id: number) {
+    return this.invoicesService.cancel(id);
+  }
+
+  /**
+   * Lấy danh sách hóa đơn
+   */
+  @Get()
+  @ApiOperation({ summary: 'Lấy danh sách hóa đơn (có filter)' })
+  @ApiQuery({ name: 'status', required: false, description: 'Lọc theo trạng thái' })
+  @ApiQuery({ name: 'month', required: false, description: 'Lọc theo tháng (MM-YYYY)' })
+  @ApiQuery({ name: 'buildingId', required: false, description: 'Lọc theo tòa nhà' })
+  findAll(
+    @Query('status') status?: InvoiceStatus,
+    @Query('month') month?: string,
+    @Query('buildingId') buildingId?: string,
+  ) {
+    return this.invoicesService.findAll({
+      status,
+      month,
+      buildingId: buildingId ? parseInt(buildingId, 10) : undefined,
+    });
+  }
+
+  /**
+   * Lấy hóa đơn theo hợp đồng
+   */
+  @Get('contract/:contractId')
+  @ApiOperation({ summary: 'Lấy tất cả hóa đơn của 1 hợp đồng' })
+  findByContract(@Param('contractId', ParseIntPipe) contractId: number) {
+    return this.invoicesService.findByContract(contractId);
+  }
+
+  /**
+   * Lấy hóa đơn theo tháng
+   */
+  @Get('month/:month')
+  @ApiOperation({ summary: 'Lấy tất cả hóa đơn của 1 tháng' })
+  @ApiParam({ name: 'month', example: '11-2025' })
+  findByMonth(@Param('month') month: string) {
+    return this.invoicesService.findByMonth(month);
+  }
+
+  /**
+   * Thống kê hóa đơn theo tháng
+   */
+  @Get('stats/:month')
+  @ApiOperation({ summary: 'Thống kê hóa đơn theo tháng' })
+  @ApiParam({ name: 'month', example: '11-2025' })
+  getMonthlyStats(@Param('month') month: string) {
+    return this.invoicesService.getMonthlyStats(month);
+  }
+
+  /**
+   * Chi tiết hóa đơn
+   */
+  @Get(':id')
+  @ApiOperation({ summary: 'Lấy chi tiết hóa đơn' })
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.invoicesService.findOne(id);
+  }
+
+  /**
+   * Xóa hóa đơn
+   */
+  @Delete(':id')
+  @ApiOperation({ summary: 'Xóa hóa đơn (chỉ DRAFT hoặc CANCELLED)' })
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.invoicesService.remove(id);
+  }
+}

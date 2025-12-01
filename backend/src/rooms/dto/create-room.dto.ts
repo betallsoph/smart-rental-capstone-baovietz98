@@ -16,6 +16,12 @@ export enum RoomStatus {
   MAINTENANCE = 'MAINTENANCE',
 }
 
+export enum Gender {
+  ALL = 'ALL',
+  MALE = 'MALE',
+  FEMALE = 'FEMALE',
+}
+
 export class CreateRoomDto {
   @ApiProperty({
     description: 'Tên phòng',
@@ -33,6 +39,16 @@ export class CreateRoomDto {
   @IsNumber({}, { message: 'Giá thuê phải là số' })
   @Min(0, { message: 'Giá thuê không được âm' })
   price: number;
+
+  @ApiPropertyOptional({
+    description: 'Tầng',
+    example: 1,
+    default: 1,
+  })
+  @IsInt({ message: 'Tầng phải là số nguyên' })
+  @IsOptional()
+  @Min(0, { message: 'Tầng không được âm' })
+  floor?: number;
 
   @ApiProperty({
     description: 'ID tòa nhà (khóa ngoại)',
@@ -69,6 +85,15 @@ export class CreateRoomDto {
   @IsEnum(RoomStatus, { message: 'Trạng thái không hợp lệ' })
   @IsOptional()
   status?: RoomStatus;
+
+  @ApiPropertyOptional({
+    description: 'Giới tính cho phép',
+    enum: Gender,
+    default: Gender.ALL,
+  })
+  @IsEnum(Gender, { message: 'Giới tính không hợp lệ' })
+  @IsOptional()
+  gender?: Gender;
 
   @ApiPropertyOptional({
     description: 'Danh sách tài sản trong phòng (JSON)',
