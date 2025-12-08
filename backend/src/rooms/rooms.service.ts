@@ -9,7 +9,7 @@ import { CreateRoomDto, UpdateRoomDto } from './dto';
 
 @Injectable()
 export class RoomsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   /**
    * Tạo phòng mới
@@ -60,6 +60,9 @@ export class RoomsService {
         building: {
           select: { id: true, name: true },
         },
+        issues: {
+          select: { id: true, title: true, status: true },
+        },
         _count: {
           select: { contracts: true },
         },
@@ -99,6 +102,9 @@ export class RoomsService {
         },
         _count: {
           select: { contracts: true },
+        },
+        issues: {
+          select: { id: true, title: true, status: true },
         },
       },
       orderBy: { name: 'asc' },

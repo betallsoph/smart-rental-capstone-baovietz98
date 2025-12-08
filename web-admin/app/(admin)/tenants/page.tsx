@@ -256,9 +256,10 @@ export default function TenantsPage() {
         
         <button 
           onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 bg-black text-white border-2 border-black px-4 py-2 font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)] hover:translate-y-[1px] hover:translate-x-[1px] hover:shadow-none transition-all"
+          className="claude-btn-primary flex items-center gap-2 group bg-black text-white px-6 py-3 rounded-xl font-bold hover:shadow-lg transition-all"
         >
-          <Plus size={20} /> Thêm khách mới
+          <Plus size={20} className="group-hover:rotate-90 transition-transform" /> 
+          <span>Thêm khách mới</span>
         </button>
       </div>
 

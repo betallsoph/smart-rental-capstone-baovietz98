@@ -1,20 +1,19 @@
 "use client";
 
 import { useState, useEffect, useMemo } from 'react';
-import { message, Spin, Empty, Checkbox, Dropdown, Modal } from 'antd';
+import { message, Spin, Empty, Checkbox, Dropdown, Modal, Tooltip } from 'antd';
 import { 
-  PlusOutlined, LoadingOutlined, FileTextOutlined, 
+  PlusOutlined, LoadingOutlined, 
   DollarOutlined, ToolOutlined, AppstoreOutlined, 
   UnorderedListOutlined, EditOutlined, DeleteOutlined, 
   MoreOutlined, CheckCircleOutlined, WarningOutlined,
-  FilterOutlined, HomeOutlined, SearchOutlined, SendOutlined
+  HomeOutlined, SearchOutlined, SendOutlined
 } from '@ant-design/icons';
-import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import axios from '@/lib/axios-client';
 import CreateRoomModal from '@/components/rooms/CreateRoomModal';
 import EditRoomModal from '@/components/rooms/EditRoomModal';
-import RoomListView from '@/components/rooms/RoomListView';
+// import RoomListView from '@/components/rooms/RoomListView';
 
 // Helper: Format Currency
 const formatCurrency = (value: number) => 
@@ -119,10 +118,25 @@ export default function AllRoomsPage() {
   // Actually, Users prefer flexibility. Let's see...
 
   const handleCreateRoom = async (values: any) => {
-      // TODO: Logic to add room requires buildingId
-      // If we are in "All Rooms", we don't know buildingId unless we add a specific field in the form.
-      // For now, let's notify user to go to Building page for creation if not filtered.
-      message.info("Vui lòng vào chi tiết Tòa nhà để thêm phòng mới.");
+      try {
+          const payload = {
+              ...values,
+              price: Number(values.price),
+              depositPrice: values.depositPrice ? Number(values.depositPrice) : undefined,
+              area: values.area ? Number(values.area) : undefined,
+              floor: values.floor ? Number(values.floor) : 1,
+              maxTenants: values.maxTenants ? Number(values.maxTenants) : 2,
+              // buildingId is handled by form if not passed
+          };
+          
+          await axios.post('/rooms', payload);
+          message.success('Thêm phòng thành công! 🎉');
+          setIsModalOpen(false);
+          fetchData();
+      } catch (error: any) {
+          console.error('Create room error:', error);
+          message.error(error.response?.data?.message || 'Lỗi khi thêm phòng');
+      }
   };
     
   const handleUpdateRoom = async (roomId: number, values: any) => {
@@ -147,23 +161,30 @@ export default function AllRoomsPage() {
       }
   };
 
-  const handleDeleteRoom = (room: any) => {
-      Modal.confirm({
-          title: 'Xóa phòng?',
-          content: `Bạn có chắc chắn muốn xóa phòng ${room.name}?`,
-          okText: 'Xóa ngay',
-          okType: 'danger',
-          onOk: async () => {
-              try {
-                  await axios.delete(`/rooms/${room.id}`);
-                  message.success('Đã xóa phòng thành công! 🗑️');
-                  fetchData();
-              } catch (error: any) {
-                  message.error('Lỗi khi xóa phòng. Có thể phòng đang có hợp đồng.');
-              }
-          }
-      });
-  };
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [roomToDelete, setRoomToDelete] = useState<any>(null);
+
+    // ... existing code ...
+
+    const handleDeleteRoom = (room: any) => {
+        setRoomToDelete(room);
+        setIsDeleteModalOpen(true);
+    };
+
+    const confirmDeleteRoom = async () => {
+        if (!roomToDelete) return;
+        try {
+            await axios.delete(`/rooms/${roomToDelete.id}`);
+            message.success('Đã xóa phòng thành công! 🗑️');
+            setIsDeleteModalOpen(false);
+            setRoomToDelete(null);
+            fetchData();
+        } catch (error: any) {
+            message.error('Lỗi khi xóa phòng. Có thể phòng đang có hợp đồng.');
+        }
+    };
+
+
 
   const handleUpdateStatus = async (roomId: number, status: string) => {
       try {
@@ -198,6 +219,13 @@ export default function AllRoomsPage() {
         
         {/* VIEW TOOLS */}
         <div className="flex items-center gap-4">
+            <button 
+                onClick={() => setIsModalOpen(true)}
+                className="claude-btn-primary flex items-center gap-2 group bg-black text-white px-6 py-3 rounded-xl font-bold hover:shadow-lg transition-all"
+            >
+                <PlusOutlined className="group-hover:rotate-90 transition-transform" /> 
+                <span>Thêm phòng</span>
+            </button>
              {/* VIEW MODE TOGGLE */}
              <div className="flex bg-white border-2 border-black p-1 gap-1 shadow-[4px_4px_0px_0px_black]">
                 <button 
@@ -301,7 +329,10 @@ export default function AllRoomsPage() {
                             <tr className="bg-black text-white uppercase text-xs font-bold tracking-wider">
                                 <th className="p-4">Phòng</th>
                                 <th className="p-4">Tòa nhà</th>
+                                <th className="p-4">Vị trí</th>
+                                <th className="p-4">Diện tích</th>
                                 <th className="p-4">Giá</th>
+                                <th className="p-4">Số người</th>
                                 <th className="p-4">Trạng thái</th>
                                 <th className="p-4 text-right">Thao tác</th>
                             </tr>
@@ -321,19 +352,69 @@ export default function AllRoomsPage() {
                                                 <Checkbox checked={isSelected} />
                                             )}
                                             {room.name}
+                                            {(() => {
+                                                if (!room.issues) return null;
+                                                
+                                                // Only show OPEN and PROCESSING issues
+                                                const activeIssues = room.issues.filter((i:any) => i.status === 'OPEN' || i.status === 'PROCESSING');
+                                                if (activeIssues.length === 0) return null;
+
+                                                const openIssues = activeIssues.filter((i:any) => i.status === 'OPEN');
+                                                const processingIssues = activeIssues.filter((i:any) => i.status === 'PROCESSING');
+
+                                                return (
+                                                <Tooltip 
+                                                    title={
+                                                        <div className="flex flex-col gap-1 min-w-[200px]">
+                                                            <div className="font-bold border-b border-gray-500 pb-1 mb-1">Danh sách sự cố:</div>
+                                                            {activeIssues.map((i: any) => (
+                                                                <div key={i.id} className="flex items-center gap-2">
+                                                                    <span className={`w-2 h-2 rounded-full ${i.status === 'OPEN' ? 'bg-red-500' : 'bg-yellow-500'}`}></span>
+                                                                    <span>{i.title}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    }
+                                                >
+                                                    <div className="flex gap-1 ml-2">
+                                                        {openIssues.length > 0 && (
+                                                            <span className="px-2 py-0.5 text-[10px] bg-red-600 text-white rounded-md flex items-center gap-1 shadow-sm font-bold animate-pulse">
+                                                                <WarningOutlined /> {openIssues.length}
+                                                            </span>
+                                                        )}
+                                                        {processingIssues.length > 0 && (
+                                                            <span className="px-2 py-0.5 text-[10px] bg-yellow-500 text-black rounded-md flex items-center gap-1 shadow-sm font-bold">
+                                                                <ToolOutlined /> {processingIssues.length}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </Tooltip>
+                                                );
+                                            })()}
                                         </div>
                                     </td>
                                     <td className="p-4 text-gray-600">
-                                        {/* Ideally room object has building.name. If not, lookup from buildings list */}
                                         {room.building?.name || buildings.find(b => b.id === room.buildingId)?.name || 'N/A'}
                                     </td>
-                                    <td className="p-4 font-mono">{formatCurrency(room.price)}</td>
+                                    <td className="p-4">
+                                        Tầng {room.floor}
+                                    </td>
+                                    <td className="p-4">
+                                        {room.area ? `${room.area} m²` : '-'}
+                                    </td>
+                                    <td className="p-4 font-mono font-bold text-[var(--primary)]">
+                                        {formatCurrency(room.price)}
+                                    </td>
+                                    <td className="p-4">
+                                        {/* Show simple tenant count if available or max tenants */}
+                                        <span className="text-gray-500">{room._count?.contracts || 0} / {room.maxTenants}</span>
+                                    </td>
                                     <td className="p-4">
                                         <span className={`px-2 py-1 text-xs font-bold border border-black ${
                                             room.status === 'RENTED' ? 'bg-[#ffcdfa]' : 
                                             room.status === 'MAINTENANCE' ? 'bg-[#fff59d]' : 'bg-[#00E054]'
                                         }`}>
-                                            {room.status}
+                                            {room.status === 'RENTED' ? 'ĐANG Ở' : room.status === 'MAINTENANCE' ? 'BẢO TRÌ' : 'TRỐNG'}
                                         </span>
                                     </td>
                                     <td className="p-4 text-right">
@@ -357,7 +438,7 @@ export default function AllRoomsPage() {
                           })}
                             {filteredRooms.length === 0 && (
                                 <tr>
-                                    <td colSpan={5} className="p-8 text-center text-gray-500 italic">Không tìm thấy phòng nào phù hợp.</td>
+                                    <td colSpan={8} className="p-8 text-center text-gray-500 italic">Không tìm thấy phòng nào phù hợp.</td>
                                 </tr>
                             )}
                         </tbody>
@@ -378,7 +459,11 @@ export default function AllRoomsPage() {
                      return (
                         <div 
                          key={room.id}
-                         onClick={() => isSelectionMode && toggleSelection(room.id)}
+                         onClick={(e) => {
+                            // Prevent triggering if clicking specific action buttons
+                            if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('.ant-dropdown-trigger')) return;
+                            if (isSelectionMode) toggleSelection(room.id);
+                         }}
                          className={`
                              relative flex flex-col justify-between group bg-white transition-all cursor-pointer overflow-hidden rounded-xl
                              ${selectedRooms.includes(room.id) ? 'ring-2 ring-[var(--primary)] bg-orange-50' : 'border border-gray-200 shadow-sm hover:shadow-lg hover:-translate-y-1'}
@@ -406,11 +491,39 @@ export default function AllRoomsPage() {
                                     }} 
                                     trigger={['click']}
                                 >
-                                    <div className={`px-2 py-0.5 text-[10px] font-bold rounded-md cursor-pointer hover:opacity-80 flex items-center gap-1 ${
-                                        room.status === 'RENTED' ? 'bg-pink-100 text-pink-700' : 
-                                        room.status === 'MAINTENANCE' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'
-                                    }`}>
-                                        {room.status === 'RENTED' ? 'ĐANG Ở' : room.status === 'MAINTENANCE' ? 'BẢO TRÌ' : 'TRỐNG'} <MoreOutlined />
+                                    <div className="flex gap-1">
+                                        {(() => {
+                                            if (!room.issues) return null;
+                                            
+                                            const activeIssues = room.issues.filter((i:any) => i.status === 'OPEN' || i.status === 'PROCESSING');
+                                            if (activeIssues.length === 0) return null;
+
+                                            const openIssues = activeIssues.filter((i:any) => i.status === 'OPEN');
+                                            const processingIssues = activeIssues.filter((i:any) => i.status === 'PROCESSING');
+                                            
+                                            return (
+                                                <Tooltip title={`Sự cố: ${activeIssues.map((i:any) => i.title).join(', ')}`}>
+                                                    <div className="flex gap-1">
+                                                        {openIssues.length > 0 && (
+                                                            <div className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-red-600 text-white flex items-center gap-1 shadow-sm animate-pulse">
+                                                                <WarningOutlined /> {openIssues.length}
+                                                            </div>
+                                                        )}
+                                                        {processingIssues.length > 0 && (
+                                                            <div className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-yellow-500 text-black flex items-center gap-1 shadow-sm">
+                                                                <ToolOutlined /> {processingIssues.length}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </Tooltip>
+                                            );
+                                        })()}
+                                        <div className={`px-2 py-0.5 text-[10px] font-bold rounded-md cursor-pointer hover:opacity-80 flex items-center gap-1 ${
+                                            room.status === 'RENTED' ? 'bg-pink-100 text-pink-700' : 
+                                            room.status === 'MAINTENANCE' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'
+                                        }`}>
+                                            {room.status === 'RENTED' ? 'ĐANG Ở' : room.status === 'MAINTENANCE' ? 'BẢO TRÌ' : 'TRỐNG'} <MoreOutlined />
+                                        </div>
                                     </div>
                                 </Dropdown>
                             </div>
@@ -471,6 +584,15 @@ export default function AllRoomsPage() {
       )}
 
       {/* EDIT MODAL ONLY - CREATE DISABLED FOR GLOBAL VIEW TO AVOID COMPLEXITY */}
+      <CreateRoomModal
+        open={isModalOpen}
+        onCancel={() => setIsModalOpen(false)}
+        onConfirm={handleCreateRoom}
+        loading={loading}
+        buildings={buildings}
+        initialBuildingId={activeBuildingFilter !== 'ALL' ? activeBuildingFilter : undefined}
+      />
+
       <EditRoomModal
         open={isEditModalOpen}
         onCancel={() => {
@@ -481,6 +603,55 @@ export default function AllRoomsPage() {
         loading={loading}
         room={editingRoom}
       />
+
+      {/* CUSTOM DELETE CONFIRMATION MODAL */}
+      <Modal
+        open={isDeleteModalOpen}
+        onCancel={() => setIsDeleteModalOpen(false)}
+        footer={null}
+        title={null}
+        width={400}
+        centered
+        closeIcon={null}
+        className="claude-delete-modal"
+        styles={{ 
+            content: { 
+                padding: '24px', 
+                borderRadius: '16px',
+                boxShadow: '0 10px 30px rgba(0,0,0,0.1)' 
+            } 
+        }}
+      >
+        <div className="flex flex-col items-center text-center">
+            <div className="w-12 h-12 rounded-full bg-orange-100 text-orange-500 flex items-center justify-center mb-4 text-xl">
+                <WarningOutlined />
+            </div>
+            
+            <h3 className="text-xl font-serif font-bold text-[#2D2D2C] mb-2">
+                Xóa phòng?
+            </h3>
+            
+            <p className="text-gray-500 text-sm mb-6">
+                Bạn có chắc chắn muốn xóa phòng <span className="font-bold text-[#2D2D2C]">{roomToDelete?.name}</span>? 
+                <br/>Hành động này không thể hoàn tác.
+            </p>
+            
+            <div className="flex gap-3 w-full">
+                <button 
+                        onClick={() => setIsDeleteModalOpen(false)}
+                        className="flex-1 px-4 py-2.5 rounded-lg border border-[#E5E5E0] bg-white text-[#6B6B6A] font-semibold text-sm hover:bg-[#F4F4F0] hover:text-[#2D2D2C] transition-all"
+                >
+                    Hủy bỏ
+                </button>
+                <button 
+                        onClick={confirmDeleteRoom}
+                        className="flex-1 px-4 py-2.5 rounded-lg bg-[#EB5757] text-white font-semibold text-sm shadow-[0_2px_0_0_#C53030] hover:bg-[#D94545] hover:shadow-[0_1px_0_0_#C53030] hover:translate-y-[1px] active:translate-y-[2px] active:shadow-none transition-all"
+                >
+                    Xóa ngay
+                </button>
+            </div>
+        </div>
+      </Modal>
 
       {/* BULK ACTIONS TOOLBAR */}
       {selectedRooms.length > 0 && (

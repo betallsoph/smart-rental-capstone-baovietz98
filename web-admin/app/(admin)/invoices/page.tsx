@@ -164,10 +164,10 @@ export default function InvoicesPage() {
              </button>
              <button 
                 onClick={() => setIsCreateModalOpen(true)}
-                className="claude-btn-primary flex items-center gap-2 text-sm"
+                className="claude-btn-primary flex items-center gap-2 group bg-black text-white px-6 py-3 rounded-xl font-bold hover:shadow-lg transition-all"
              >
-                <Plus size={16} /> 
-                Tạo hóa đơn
+                <Plus size={20} className="group-hover:rotate-90 transition-transform" /> 
+                <span>Tạo hóa đơn</span>
              </button>
           </div>
         </div>

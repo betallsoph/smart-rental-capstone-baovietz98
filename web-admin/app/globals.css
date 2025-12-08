@@ -220,3 +220,28 @@ h6 {
     color: #856404;
   }
 }
+
+/* Claude Select Dropdown */
+.claude-select-popup .ant-select-item-option-selected {
+  background-color: #F4F4F0 !important;
+  font-weight: 600;
+  color: #D97757;
+}
+
+.claude-select-popup .ant-select-item-option-active {
+  background-color: #F9F9F7 !important;
+}
+
+.claude-select-popup {
+  border-radius: 12px !important;
+  padding: 4px;
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Claude Delete Modal */
+.claude-delete-modal .ant-modal-content {
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  padding: 0;
+  overflow: hidden;
+}

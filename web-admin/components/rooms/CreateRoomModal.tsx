@@ -7,16 +7,21 @@ interface CreateRoomModalProps {
     onCancel: () => void;
     onConfirm: (values: any) => void;
     loading?: boolean;
+    buildings?: any[]; // Optional list of buildings for selection
+    initialBuildingId?: number;
 }
 
-export default function CreateRoomModal({ open, onCancel, onConfirm, loading }: CreateRoomModalProps) {
+export default function CreateRoomModal({ open, onCancel, onConfirm, loading, buildings = [], initialBuildingId }: CreateRoomModalProps) {
     const [form] = Form.useForm();
 
     useEffect(() => {
         if (open) {
             form.resetFields();
+            if (initialBuildingId) {
+                form.setFieldValue('buildingId', initialBuildingId);
+            }
         }
-    }, [open, form]);
+    }, [open, form, initialBuildingId]);
 
     const handleSubmit = async () => {
         try {
@@ -50,6 +55,22 @@ export default function CreateRoomModal({ open, onCancel, onConfirm, loading }: 
 
                 <div className="p-8">
                     <Form form={form} layout="vertical" className="font-mono">
+                        {/* Building Select - Only show if buildings list is provided */}
+                        {buildings && buildings.length > 0 && (
+                             <Form.Item 
+                                label={<span className="font-bold text-lg uppercase">Tòa nhà</span>} 
+                                name="buildingId" 
+                                rules={[{ required: true, message: 'Vui lòng chọn tòa nhà!' }]}
+                             >
+                                <Select
+                                    placeholder="Chọn tòa nhà..."
+                                    className="gumroad-select-override h-12"
+                                    options={buildings.map(b => ({ value: b.id, label: b.name }))}
+                                    disabled={!!initialBuildingId}
+                                />
+                             </Form.Item>
+                        )}
+
                         <div className="grid grid-cols-2 gap-6">
                             <Form.Item label={<span className="font-bold text-lg uppercase">Tên phòng</span>} name="name" rules={[{ required: true, message: 'Nhập tên phòng!' }]}>
                                 <Input className="gumroad-input" placeholder="VD: P.101" />

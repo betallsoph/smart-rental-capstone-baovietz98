@@ -12,7 +12,8 @@ import {
   LogOut,
   Receipt,
   Zap,
-  Droplets
+  Droplets,
+  AlertTriangle
 } from 'lucide-react';
 
 const menuItems = [
@@ -23,15 +24,25 @@ const menuItems = [
   { name: 'Hợp đồng', href: '/contracts', icon: FileText },
   { name: 'Dịch vụ', href: '/services', icon: Zap },
   { name: 'Chốt số', href: '/readings', icon: Droplets },
+  { name: 'Sự cố', href: '/issues', icon: AlertTriangle },
   { name: 'Hóa đơn', href: '/invoices', icon: Receipt },
   { name: 'Tài chính', href: '/finance', icon: Wallet },
 ];
 
-export default function Sidebar() {
+interface SidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const pathname = usePathname();
 
   return (
-    <aside className="w-64 bg-white border-r-2 border-black h-screen fixed left-0 top-0 flex flex-col z-50">
+    <aside className={`
+      w-64 bg-white border-r-2 border-black h-screen fixed left-0 top-0 flex flex-col z-50 transition-transform duration-300
+      md:translate-x-0
+      ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+    `}>
       {/* Logo */}
       <div className="p-6 border-b-2 border-black bg-[#FFC900]">
         <h1 className="text-4xl font-black tracking-tighter uppercase flex flex-col leading-none">

@@ -218,9 +218,10 @@ export default function ReadingsPage() {
                 form.resetFields();
                 setIsModalOpen(true);
             }}
-            className="flex items-center gap-2 bg-black text-white px-4 py-2 rounded-lg font-medium shadow-sm hover:bg-gray-800 transition-all text-sm"
+            className="claude-btn-primary flex items-center gap-2 group bg-black text-white px-6 py-3 rounded-xl font-bold hover:shadow-lg transition-all"
             >
-            <Plus size={16} /> Chốt số mới
+            <Plus size={20} className="group-hover:rotate-90 transition-transform" /> 
+            <span>Chốt số mới</span>
             </button>
         </div>
 
