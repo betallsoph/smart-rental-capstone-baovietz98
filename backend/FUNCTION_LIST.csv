@@ -1,0 +1,562 @@
+CODE,FUNCTION,DESCRIPTION,MODEL,TABLE NAME,DIAGRAM
+AUTH-101,LOGIN,"1. Input Email/Password từ client
+2. Validation Email/Password format
+3. Check User tồn tại trong database
+4. Check User isActive = true
+5. Compare Password hash với bcrypt
+6. Generate JWT Access Token (15 min expiry)
+7. Generate Refresh Token (7 days expiry)
+8. Hash và lưu Refresh Token vào database
+9. Trả về Access Token + Refresh Token
+10. Frontend lưu tokens vào Local Storage",User,users,SEQUENCE ACTIVITY
+AUTH-102,REGISTER,"1. Input Email/Password/Name từ client
+2. Validation Email format, Password strength
+3. Check Email đã tồn tại chưa (unique constraint)
+4. Hash Password với bcrypt (10 rounds)
+5. Create User mới với role = ADMIN/TENANT
+6. Generate JWT Access Token
+7. Generate Refresh Token
+8. Hash và lưu Refresh Token vào database
+9. Trả về Access Token + Refresh Token + User info",User,users,SEQUENCE ACTIVITY
+AUTH-103,REFRESH-TOKEN,"1. Lấy Refresh Token từ request body
+2. Check User ID từ token payload
+3. Get User từ database
+4. Compare Refresh Token hash với token trong database
+5. Check Token chưa expire
+6. Generate JWT Access Token mới
+7. Generate Refresh Token mới
+8. Update Refresh Token hash trong database
+9. Trả về Access Token + Refresh Token mới",User,users,SEQUENCE ACTIVITY
+AUTH-104,FORGOT-PASSWORD,"1. Input Email từ client
+2. Validation Email format
+3. Check User tồn tại
+4. Generate random Reset Token (40 ký tự)
+5. Set Reset Token Expiry = current time + 1 hour
+6. Lưu resetToken + resetTokenExp vào database
+7. Send Email với link reset password (chứa token)
+8. Trả về success message",User,users,SEQUENCE ACTIVITY
+AUTH-105,RESET-PASSWORD,"1. Input Reset Token + New Password từ client
+2. Find User by resetToken trong database
+3. Check resetTokenExp > current time (chưa hết hạn)
+4. Validation New Password strength
+5. Hash New Password với bcrypt
+6. Update User password
+7. Clear resetToken và resetTokenExp (set null)
+8. Trả về success message",User,users,SEQUENCE ACTIVITY
+AUTH-106,LOGOUT,"1. Lấy User ID từ JWT token
+2. Find User trong database
+3. Set refreshToken = null
+4. Frontend xóa tokens khỏi Local Storage
+5. Trả về success message",User,users,SEQUENCE ACTIVITY
+BLD-201,CREATE-BUILDING,"1. Lấy JWT sau khi phân rã (chứa ID, Role)
+2. Check Role = ADMIN
+3. Input name, address từ client
+4. Validation name không trống, address hợp lệ
+5. CREATE Building mới
+6. Trả về Building info",Building,buildings,SEQUENCE ACTIVITY
+BLD-202,GET-ALL-BUILDINGS,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Query all Buildings từ database
+4. Với mỗi Building: Count total rooms, Count rooms by status, Sum revenue từ rented rooms
+5. Aggregate statistics
+6. Trả về danh sách Buildings với stats","Building, Room","buildings, rooms",SEQUENCE ACTIVITY
+BLD-203,GET-BUILDING-DETAIL,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input Building ID từ params
+4. Check Building tồn tại
+5. Query Building với include rooms
+6. Calculate room statistics
+7. Trả về Building detail + rooms list","Building, Room","buildings, rooms",SEQUENCE ACTIVITY
+BLD-204,UPDATE-BUILDING,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input Building ID + update data (name, address)
+4. Check Building tồn tại
+5. Validation update data
+6. UPDATE Building
+7. Trả về updated Building",Building,buildings,SEQUENCE ACTIVITY
+BLD-205,DELETE-BUILDING,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input Building ID
+4. Check Building tồn tại
+5. Check Building KHÔNG có rooms (cascade protection)
+6. DELETE Building
+7. Trả về success message",Building,buildings,SEQUENCE ACTIVITY
+ROOM-301,CREATE-ROOM,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input name, floor, area, price, depositPrice, maxTenants, buildingId, gender, assets
+4. Validation all fields
+5. Check Building tồn tại
+6. Set status = AVAILABLE (default)
+7. Parse assets JSON (danh sách nội thất)
+8. CREATE Room
+9. Trả về Room info","Room, Building","rooms, buildings",SEQUENCE ACTIVITY
+ROOM-302,GET-ALL-ROOMS,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Query all Rooms với include Building
+4. Trả về danh sách Rooms","Room, Building","rooms, buildings",SEQUENCE ACTIVITY
+ROOM-303,GET-ROOMS-BY-BUILDING,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input Building ID từ params
+4. Check Building tồn tại
+5. Query Rooms where buildingId = input
+6. Trả về danh sách Rooms","Room, Building","rooms, buildings",SEQUENCE ACTIVITY
+ROOM-304,GET-ROOM-DETAIL,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input Room ID
+4. Check Room tồn tại
+5. Query Room với include: Building, Active Contract, Contract include Tenant info
+6. Trả về Room detail + active contract","Room, Building, Contract, Tenant","rooms, buildings, contracts, tenants",SEQUENCE ACTIVITY
+ROOM-305,UPDATE-ROOM,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input Room ID + update data
+4. Check Room tồn tại
+5. Validation update data
+6. Parse assets JSON nếu có update
+7. UPDATE Room
+8. Trả về updated Room",Room,rooms,SEQUENCE ACTIVITY
+ROOM-306,UPDATE-ROOM-STATUS,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input Room ID + new status (AVAILABLE/RENTED/MAINTENANCE)
+4. Check Room tồn tại
+5. Validation status value
+6. UPDATE Room status
+7. Trả về updated Room",Room,rooms,SEQUENCE ACTIVITY
+ROOM-307,DELETE-ROOM,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input Room ID
+4. Check Room tồn tại
+5. Check Room KHÔNG có active contract (cascade protection)
+6. DELETE Room
+7. Trả về success message",Room,rooms,SEQUENCE ACTIVITY
+ROOM-308,BULK-UPDATE-PRICE,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input array of {roomId, newPrice}
+4. Validation tất cả roomIds tồn tại
+5. Sử dụng For Loop để UPDATE từng Room price
+6. Aggregate results
+7. Trả về số lượng rooms updated",Room,rooms,SEQUENCE ACTIVITY
+ROOM-309,BULK-CREATE-ISSUES,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input array of roomIds + issue title + description
+4. Validation tất cả roomIds tồn tại
+5. Sử dụng For Loop để CREATE Issue cho từng Room
+6. Set status = OPEN (default)
+7. Trả về số lượng issues created","Room, Issue","rooms, issues",SEQUENCE ACTIVITY
+ROOM-310,GET-ROOM-STATS,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input Building ID
+4. Query Rooms where buildingId = input
+5. Aggregate statistics: Total rooms, Available/Rented/Maintenance rooms, Occupancy rate, Total revenue
+6. Trả về statistics object",Room,rooms,SEQUENCE ACTIVITY
+TNT-401,CREATE-TENANT,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input fullName, phone, cccd, info (JSON)
+4. Validation phone unique
+5. Parse info JSON (address, ID photos URLs)
+6. CREATE Tenant
+7. Trả về Tenant info",Tenant,tenants,SEQUENCE ACTIVITY
+TNT-402,GET-ALL-TENANTS,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Query all Tenants
+4. Include contract count
+5. Trả về danh sách Tenants",Tenant,tenants,SEQUENCE ACTIVITY
+TNT-403,GET-TENANT-DETAIL,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input Tenant ID
+4. Check Tenant tồn tại
+5. Query Tenant với include: All Contracts, Contracts include Room info
+6. Trả về Tenant detail + contract history","Tenant, Contract, Room","tenants, contracts, rooms",SEQUENCE ACTIVITY
+TNT-404,UPDATE-TENANT,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input Tenant ID + update data
+4. Check Tenant tồn tại
+5. Validation update data
+6. Check phone unique nếu update phone
+7. Parse info JSON nếu có update
+8. UPDATE Tenant
+9. Trả về updated Tenant",Tenant,tenants,SEQUENCE ACTIVITY
+TNT-405,DELETE-TENANT,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input Tenant ID
+4. Check Tenant tồn tại
+5. Check Tenant KHÔNG có active contract
+6. DELETE Tenant
+7. Trả về success message",Tenant,tenants,SEQUENCE ACTIVITY
+CTR-501,CREATE-CONTRACT,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input tenantId, roomId, startDate, endDate, deposit, price, paymentDay, numTenants, initialIndexes
+4. Check Tenant tồn tại
+5. Check Room tồn tại và status = AVAILABLE
+6. Validation dates (endDate > startDate)
+7. Parse initialIndexes JSON
+8. BEGIN TRANSACTION: CREATE Contract, UPDATE Room status = RENTED, CREATE initial ServiceReadings
+9. COMMIT TRANSACTION
+10. Trả về Contract info","Contract, Tenant, Room, ServiceReading","contracts, tenants, rooms, service_readings",SEQUENCE ACTIVITY
+CTR-502,GET-ALL-CONTRACTS,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input filter: isActive (true/false/all)
+4. Query Contracts với filter
+5. Include Tenant, Room, Building info
+6. Trả về danh sách Contracts","Contract, Tenant, Room, Building","contracts, tenants, rooms, buildings",SEQUENCE ACTIVITY
+CTR-503,GET-CONTRACT-DETAIL,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input Contract ID
+4. Check Contract tồn tại
+5. Query Contract với include: Tenant info, Room info, Invoices list, Transactions list
+6. Trả về Contract detail","Contract, Tenant, Room, Building, Invoice, Transaction","contracts, tenants, rooms, buildings, invoices, transactions",SEQUENCE ACTIVITY
+CTR-504,UPDATE-CONTRACT,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input Contract ID + update data
+4. Check Contract tồn tại
+5. Validation update data
+6. UPDATE Contract
+7. Trả về updated Contract",Contract,contracts,SEQUENCE ACTIVITY
+CTR-505,TERMINATE-CONTRACT,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input Contract ID + newRoomStatus
+4. Check Contract tồn tại và isActive = true
+5. BEGIN TRANSACTION: UPDATE Contract (set isActive = false), UPDATE Room status
+6. COMMIT TRANSACTION
+7. Trả về success message","Contract, Room","contracts, rooms",SEQUENCE ACTIVITY
+CTR-506,MOVE-CONTRACT,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input contractId, newRoomId, moveDate, settlementOption, oldRoomStatus
+4. Check Contract và New Room tồn tại
+5. Get latest ServiceReadings
+6. Calculate pro-rata rent
+7. Calculate utility settlement
+8. Calculate deposit adjustment
+9. BEGIN TRANSACTION: CREATE closing readings, CREATE settlement invoice, CREATE transaction, UPDATE contract, CREATE opening readings, UPDATE both rooms
+10. COMMIT TRANSACTION
+11. Trả về Contract updated + Invoice created","Contract, Room, ServiceReading, Invoice, Transaction","contracts, rooms, service_readings, invoices, transactions",SEQUENCE ACTIVITY
+CTR-507,DELETE-CONTRACT,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input Contract ID
+4. Check Contract tồn tại
+5. Check Contract KHÔNG có Invoices
+6. DELETE Contract
+7. Trả về success message",Contract,contracts,SEQUENCE ACTIVITY
+CTR-508,GET-CONTRACT-STATS,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Query all Contracts
+4. Aggregate statistics: Total/Active/Inactive contracts, Total deposit, Average duration
+5. Trả về statistics object",Contract,contracts,SEQUENCE ACTIVITY
+SVC-601,CREATE-SERVICE,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input name, price, unit, type, calculationType
+4. Validation all fields
+5. Set isActive = true
+6. CREATE Service
+7. Trả về Service info",Service,services,SEQUENCE ACTIVITY
+SVC-602,GET-ALL-SERVICES,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Query all Services where isActive = true
+4. Trả về danh sách Services",Service,services,SEQUENCE ACTIVITY
+SVC-603,GET-SERVICES-BY-TYPE,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input type (INDEX/FIXED)
+4. Query Services where type = input AND isActive = true
+5. Trả về danh sách Services",Service,services,SEQUENCE ACTIVITY
+SVC-604,UPDATE-SERVICE,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input Service ID + update data
+4. Check Service tồn tại
+5. Validation update data
+6. UPDATE Service
+7. Trả về updated Service",Service,services,SEQUENCE ACTIVITY
+SVC-605,DELETE-SERVICE,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input Service ID
+4. Check Service tồn tại
+5. UPDATE Service: set isActive = false (soft delete)
+6. Trả về success message",Service,services,SEQUENCE ACTIVITY
+SVC-606,SEED-DEFAULT-SERVICES,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Define default services array: Điện, Nước, Wifi, Rác, Gửi xe
+4. For each: Check chưa tồn tại, CREATE Service
+5. Trả về số lượng services created",Service,services,SEQUENCE ACTIVITY
+RDG-701,PREPARE-SINGLE-READING,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input contractId, serviceId, month
+4. Check Contract và Service tồn tại
+5. Query previous reading
+6. IF found: lấy newIndex làm oldIndex, ELSE: lấy từ initialIndexes
+7. Get Service.price làm unitPrice
+8. Trả về {oldIndex, unitPrice, serviceInfo}","Contract, Service, ServiceReading","contracts, services, service_readings",SEQUENCE ACTIVITY
+RDG-702,CREATE-SINGLE-READING,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input contractId, serviceId, month, newIndex, readingDate, isMeterReset, note
+4. Get oldIndex từ PREPARE
+5. Validation newIndex >= oldIndex
+6. Calculate usage và totalCost
+7. Check unique constraint
+8. CREATE ServiceReading với isBilled = false
+9. Trả về Reading info","ServiceReading, Contract, Service","service_readings, contracts, services",SEQUENCE ACTIVITY
+RDG-703,PREPARE-BULK-READING,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input buildingId, month, serviceId
+4. Check Building và Service tồn tại
+5. Query all active Contracts
+6. For each: Get Room info, Get oldIndex, Prepare row data
+7. Trả về array of rows (spreadsheet format)","Building, Room, Contract, Tenant, ServiceReading, Service","buildings, rooms, contracts, tenants, service_readings, services",SEQUENCE ACTIVITY
+RDG-704,CREATE-BULK-READING,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input array of readings
+4. Validation tất cả contractIds và serviceId
+5. BEGIN TRANSACTION: For each row - Get oldIndex, Validate, Calculate, CREATE reading
+6. COMMIT TRANSACTION
+7. Trả về số lượng readings created","ServiceReading, Contract, Service","service_readings, contracts, services",SEQUENCE ACTIVITY
+RDG-705,GET-READINGS-LIST,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input filters: month, buildingId, serviceId, isBilled
+4. Query ServiceReadings với filters
+5. Include Contract, Room, Tenant, Service info
+6. Sort by readingDate DESC
+7. Trả về danh sách Readings","ServiceReading, Contract, Room, Tenant, Service","service_readings, contracts, rooms, tenants, services",SEQUENCE ACTIVITY
+RDG-706,GET-UNREAD-ROOMS,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input buildingId, month, serviceId
+4. Query all active Contracts
+5. Query all Readings
+6. Filter Contracts chưa có Reading
+7. Include Room, Tenant info
+8. Trả về danh sách unread contracts","Contract, Room, Tenant, ServiceReading","contracts, rooms, tenants, service_readings",SEQUENCE ACTIVITY
+RDG-707,UPDATE-READING,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input Reading ID + update data
+4. Check Reading tồn tại
+5. Check isBilled = false
+6. Validation newIndex >= oldIndex
+7. Recalculate usage và totalCost
+8. UPDATE ServiceReading
+9. Trả về updated Reading",ServiceReading,service_readings,SEQUENCE ACTIVITY
+RDG-708,DELETE-READING,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input Reading ID
+4. Check Reading tồn tại
+5. Check isBilled = false
+6. DELETE ServiceReading
+7. Trả về success message",ServiceReading,service_readings,SEQUENCE ACTIVITY
+RDG-709,GET-READING-STATS,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input month, buildingId
+4. Query all ServiceReadings
+5. Aggregate statistics: Total readings, Total electricity/water usage, Total cost, Average usage
+6. Trả về statistics object","ServiceReading, Contract, Room","service_readings, contracts, rooms",SEQUENCE ACTIVITY
+INV-801,PREVIEW-INVOICE,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input contractId, month
+4. Validation month format
+5. Check Contract tồn tại và isActive = true
+6. Query all ServiceReadings
+7. Validate INDEX services có readings
+8. Calculate room charge (full month or pro-rata)
+9. Calculate service charges (INDEX + FIXED)
+10. Query previous unpaid Invoices
+11. Calculate previousDebt
+12. Check missing deposit
+13. Create line items array
+14. Calculate totals
+15. Trả về preview object (KHÔNG save)","Contract, ServiceReading, Service, Invoice","contracts, service_readings, services, invoices",SEQUENCE ACTIVITY
+INV-802,GENERATE-DRAFT-INVOICE,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input contractId, month, lineItems, dueDate
+4. Check unique constraint
+5. IF lineItems provided: use snapshot, ELSE: calculate
+6. Generate accessCode (UUID)
+7. CREATE Invoice với status = DRAFT
+8. Trả về Invoice info","Invoice, Contract","invoices, contracts",SEQUENCE ACTIVITY
+INV-803,GENERATE-BULK-INVOICES,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input month, buildingId
+4. Query all active Contracts
+5. BEGIN TRANSACTION: For each - Check chưa có invoice, Call PREVIEW, CREATE invoice
+6. COMMIT TRANSACTION
+7. Trả về số lượng invoices created","Invoice, Contract","invoices, contracts",SEQUENCE ACTIVITY
+INV-804,UPDATE-DRAFT-INVOICE,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input Invoice ID + update data
+4. Check Invoice tồn tại
+5. Check status = DRAFT
+6. IF update lineItems: Recalculate amounts
+7. IF update discount: Recalculate totalAmount
+8. UPDATE Invoice
+9. Trả về updated Invoice",Invoice,invoices,SEQUENCE ACTIVITY
+INV-805,PUBLISH-INVOICE,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input Invoice ID
+4. Check Invoice tồn tại
+5. Check status = DRAFT
+6. BEGIN TRANSACTION: UPDATE Invoice status, Query readings, UPDATE readings isBilled = true
+7. COMMIT TRANSACTION
+8. Trả về published Invoice","Invoice, ServiceReading","invoices, service_readings",SEQUENCE ACTIVITY
+INV-806,UNPUBLISH-INVOICE,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input Invoice ID
+4. Check Invoice tồn tại
+5. Check status = PUBLISHED
+6. BEGIN TRANSACTION: UPDATE Invoice to DRAFT, UPDATE readings isBilled = false
+7. COMMIT TRANSACTION
+8. Trả về Invoice","Invoice, ServiceReading","invoices, service_readings",SEQUENCE ACTIVITY
+INV-807,RECORD-PAYMENT,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input invoiceId, amount, paymentDate, note, isDepositPayment
+4. Check Invoice tồn tại
+5. Check status = PUBLISHED/PARTIAL/OVERDUE
+6. Validation amount
+7. BEGIN TRANSACTION: UPDATE Invoice (paidAmount, status, paymentHistory), CREATE Transaction, IF isDepositPayment: UPDATE Contract
+8. COMMIT TRANSACTION
+9. Trả về updated Invoice + Transaction","Invoice, Transaction, Contract","invoices, transactions, contracts",SEQUENCE ACTIVITY
+INV-808,CANCEL-INVOICE,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input Invoice ID
+4. Check Invoice tồn tại
+5. Check status = DRAFT/PUBLISHED
+6. BEGIN TRANSACTION: UPDATE Invoice status = CANCELLED, UPDATE readings isBilled = false
+7. COMMIT TRANSACTION
+8. Trả về success message","Invoice, ServiceReading","invoices, service_readings",SEQUENCE ACTIVITY
+INV-809,GET-ALL-INVOICES,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input filters: status, month, buildingId
+4. Query Invoices với filters
+5. Include Contract, Room, Tenant, Building info
+6. Sort by createdAt DESC
+7. Trả về danh sách Invoices","Invoice, Contract, Room, Tenant, Building","invoices, contracts, rooms, tenants, buildings",SEQUENCE ACTIVITY
+INV-810,GET-INVOICE-DETAIL,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input Invoice ID
+4. Check Invoice tồn tại
+5. Query Invoice với include all relations
+6. Parse lineItems và paymentHistory JSON
+7. Trả về Invoice detail","Invoice, Contract, Room, Tenant, Building, Transaction","invoices, contracts, rooms, tenants, buildings, transactions",SEQUENCE ACTIVITY
+INV-811,GET-INVOICE-PUBLIC,"1. Input accessCode (UUID)
+2. Marked with @Public() - bypass JWT
+3. Find Invoice by accessCode
+4. Check Invoice tồn tại
+5. Query Invoice với include Contract, Room, Tenant
+6. Parse lineItems và paymentHistory
+7. Trả về Invoice detail (for tenant)","Invoice, Contract, Room, Tenant","invoices, contracts, rooms, tenants",SEQUENCE ACTIVITY
+INV-812,DELETE-INVOICE,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input Invoice ID
+4. Check Invoice tồn tại
+5. Check status = DRAFT hoặc CANCELLED
+6. DELETE Invoice
+7. Trả về success message",Invoice,invoices,SEQUENCE ACTIVITY
+INV-813,GET-INVOICE-STATS,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input month, buildingId
+4. Query Invoices
+5. Aggregate statistics: Count by status, Total amounts, Collection rate
+6. Trả về statistics object",Invoice,invoices,SEQUENCE ACTIVITY
+INV-814,GET-INVOICES-BY-MONTH,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input month
+4. Query Invoices where month = input
+5. Include Contract, Room, Tenant info
+6. Calculate summary stats
+7. Trả về danh sách Invoices + stats","Invoice, Contract, Room, Tenant","invoices, contracts, rooms, tenants",SEQUENCE ACTIVITY
+TXN-901,CREATE-TRANSACTION,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input contractId, type, amount, date, note, invoiceId
+4. Check Contract tồn tại
+5. IF type = INVOICE_PAYMENT: check Invoice
+6. Generate transaction code (TXN-YYYYMMDD-XXXX)
+7. CREATE Transaction
+8. Trả về Transaction info","Transaction, Contract, Invoice","transactions, contracts, invoices",SEQUENCE ACTIVITY
+TXN-902,GET-ALL-TRANSACTIONS,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input filters: type, contractId, dateFrom, dateTo
+4. Query Transactions với filters
+5. Include Contract, Invoice info
+6. Sort by date DESC
+7. Trả về danh sách Transactions","Transaction, Contract, Invoice","transactions, contracts, invoices",SEQUENCE ACTIVITY
+TXN-903,GET-TRANSACTION-DETAIL,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input Transaction ID
+4. Check Transaction tồn tại
+5. Query Transaction với include all relations
+6. Trả về Transaction detail","Transaction, Contract, Invoice, Tenant, Room","transactions, contracts, invoices, tenants, rooms",SEQUENCE ACTIVITY
+TXN-904,GET-TRANSACTION-STATS,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input dateFrom, dateTo, buildingId
+4. Query Transactions với date range
+5. Aggregate statistics: Count by type, Total amounts, Average amount
+6. Trả về statistics object",Transaction,transactions,SEQUENCE ACTIVITY
+ISS-1001,CREATE-ISSUE,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input roomId, title, description, images
+4. Check Room tồn tại
+5. Set status = OPEN
+6. CREATE Issue
+7. Trả về Issue info","Issue, Room","issues, rooms",SEQUENCE ACTIVITY
+ISS-1002,GET-ALL-ISSUES,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input filters: status, roomId, buildingId
+4. Query Issues với filters
+5. Include Room, Building info
+6. Sort by createdAt DESC
+7. Trả về danh sách Issues","Issue, Room, Building","issues, rooms, buildings",SEQUENCE ACTIVITY
+ISS-1003,GET-ISSUE-DETAIL,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input Issue ID
+4. Check Issue tồn tại
+5. Query Issue với include Room, Building
+6. Trả về Issue detail","Issue, Room, Building","issues, rooms, buildings",SEQUENCE ACTIVITY
+ISS-1004,UPDATE-ISSUE-STATUS,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input Issue ID + new status
+4. Check Issue tồn tại
+5. Validation status value
+6. UPDATE Issue status
+7. Trả về updated Issue",Issue,issues,SEQUENCE ACTIVITY
+ISS-1005,UPDATE-ISSUE,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input Issue ID + update data
+4. Check Issue tồn tại
+5. UPDATE Issue
+6. Trả về updated Issue",Issue,issues,SEQUENCE ACTIVITY
+ISS-1006,DELETE-ISSUE,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input Issue ID
+4. Check Issue tồn tại
+5. DELETE Issue
+6. Trả về success message",Issue,issues,SEQUENCE ACTIVITY
+UPL-1101,UPLOAD-CCCD,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input tenantId, frontImage, backImage
+4. Check Tenant tồn tại
+5. Validation file type và size
+6. Upload frontImage to Cloudinary (folder: cccd/front)
+7. Upload backImage to Cloudinary (folder: cccd/back)
+8. Get URLs
+9. UPDATE Tenant.info JSON
+10. Trả về uploaded URLs",Tenant,tenants,SEQUENCE ACTIVITY
+UPL-1102,UPLOAD-SINGLE-IMAGE,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input folder name, image file
+4. Validation file type và size
+5. Upload to Cloudinary
+6. Apply optimization
+7. Get URL
+8. Trả về uploaded URL",N/A,N/A,SEQUENCE ACTIVITY
+UPL-1103,UPLOAD-MULTIPLE-IMAGES,"1. Lấy JWT sau khi phân rã
+2. Check Role = ADMIN
+3. Input folder name, images array
+4. Validation all files
+5. For each: Upload to Cloudinary, Apply optimization
+6. Collect all URLs
+7. Trả về array of URLs",N/A,N/A,SEQUENCE ACTIVITY
+MAIL-1201,SEND-PASSWORD-RESET-EMAIL,"1. Called by AUTH-104
+2. Input userEmail, userName, resetToken
+3. Build reset URL
+4. Load HTML template (Camel Stay theme)
+5. Replace placeholders
+6. Send email via Nodemailer
+7. Trả về success/failure",N/A,N/A,SEQUENCE ACTIVITY
+MAIL-1202,SEND-USER-CONFIRMATION-EMAIL,"1. Called by AUTH-102
+2. Input userEmail, userName
+3. Load HTML template
+4. Replace placeholders
+5. Send email via Nodemailer
+6. Trả về success/failure",N/A,N/A,SEQUENCE ACTIVITY
