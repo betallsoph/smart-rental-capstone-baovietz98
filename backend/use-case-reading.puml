@@ -1,0 +1,77 @@
+@startuml Meter Reading Management
+
+title Use Case Diagram - Meter Reading Management
+
+' Actors
+actor "Admin" as Admin
+
+' System Boundary
+rectangle "Smart Rental System - Meter Reading" {
+
+  package "Reading Preparation" {
+    usecase "UC-43\nPrepare Single\nReading" as UC43
+    usecase "UC-44\nPrepare Bulk\nReading" as UC44
+  }
+
+  package "Reading Creation" {
+    usecase "UC-45\nCreate Single\nReading" as UC45
+    usecase "UC-46\nCreate Bulk\nReading" as UC46
+  }
+
+  package "Reading Management" {
+    usecase "UC-47\nView Readings List" as UC47
+    usecase "UC-48\nView Unread Rooms" as UC48
+    usecase "UC-49\nUpdate Reading" as UC49
+    usecase "UC-50\nDelete Reading" as UC50
+    usecase "UC-51\nView Reading Stats" as UC51
+  }
+
+  ' Internal use cases
+  usecase "Get Previous\nMonth Index" as GetPrevIndex
+  usecase "Calculate Usage" as CalcUsage
+  usecase "Calculate Total Cost" as CalcCost
+  usecase "Validate Not Billed" as ValidateNotBilled
+
+}
+
+' Relationships
+Admin --> UC43
+Admin --> UC44
+Admin --> UC45
+Admin --> UC46
+Admin --> UC47
+Admin --> UC48
+Admin --> UC49
+Admin --> UC50
+Admin --> UC51
+
+' Include relationships
+UC43 ..> GetPrevIndex : <<include>>
+UC44 ..> GetPrevIndex : <<include>>
+
+UC45 ..> UC43 : <<include>>
+UC45 ..> CalcUsage : <<include>>
+UC45 ..> CalcCost : <<include>>
+
+UC46 ..> UC44 : <<include>>
+UC46 ..> CalcUsage : <<include>>
+UC46 ..> CalcCost : <<include>>
+
+UC49 ..> ValidateNotBilled : <<include>>
+UC49 ..> CalcUsage : <<include>>
+UC49 ..> CalcCost : <<include>>
+
+UC50 ..> ValidateNotBilled : <<include>>
+
+note right of UC46
+  Bulk operation for
+  entire building.
+  Spreadsheet-style input.
+end note
+
+note right of UC49
+  Cannot update if
+  already billed in invoice.
+end note
+
+@enduml

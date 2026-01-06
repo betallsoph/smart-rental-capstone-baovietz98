@@ -1,0 +1,105 @@
+@startuml Invoice Management
+
+title Use Case Diagram - Invoice Management
+
+' Actors
+actor "Admin" as Admin
+actor "Tenant" as Tenant
+
+' System Boundary
+rectangle "Smart Rental System - Invoice Management" {
+
+  package "Invoice Creation" {
+    usecase "UC-29\nPreview Invoice" as UC29
+    usecase "UC-30\nGenerate Draft\nInvoice" as UC30
+    usecase "UC-31\nBulk Generate\nInvoices" as UC31
+    usecase "UC-32\nUpdate Draft" as UC32
+  }
+
+  package "Invoice Publishing" {
+    usecase "UC-33\nPublish Invoice" as UC33
+    usecase "UC-34\nUnpublish Invoice" as UC34
+  }
+
+  package "Payment Processing" {
+    usecase "UC-35\nRecord Payment" as UC35
+    usecase "UC-36\nView Payment\nHistory" as UC36
+  }
+
+  package "Invoice Viewing" {
+    usecase "UC-37\nView All Invoices" as UC37
+    usecase "UC-38\nView Invoice Detail" as UC38
+    usecase "UC-39\nView Invoice Public\n(No Auth)" as UC39
+    usecase "UC-40\nView Invoice Stats" as UC40
+  }
+
+  package "Invoice Operations" {
+    usecase "UC-41\nCancel Invoice" as UC41
+    usecase "UC-42\nDelete Invoice" as UC42
+  }
+
+  ' Internal use cases
+  usecase "Calculate Room Charge" as CalcRoom
+  usecase "Calculate Service Charge" as CalcService
+  usecase "Calculate Previous Debt" as CalcDebt
+  usecase "Create Line Items" as CreateLines
+  usecase "Mark Readings as Billed" as MarkBilled
+  usecase "Create Transaction" as CreateTxn
+  usecase "Update Invoice Status" as UpdateStatus
+
+}
+
+' Admin relationships
+Admin --> UC29
+Admin --> UC30
+Admin --> UC31
+Admin --> UC32
+Admin --> UC33
+Admin --> UC34
+Admin --> UC35
+Admin --> UC36
+Admin --> UC37
+Admin --> UC38
+Admin --> UC40
+Admin --> UC41
+Admin --> UC42
+
+' Tenant relationships
+Tenant --> UC39
+
+' Include relationships
+UC29 ..> CalcRoom : <<include>>
+UC29 ..> CalcService : <<include>>
+UC29 ..> CalcDebt : <<include>>
+UC29 ..> CreateLines : <<include>>
+
+UC30 ..> UC29 : <<include>>
+UC31 ..> UC30 : <<include>>
+
+UC33 ..> MarkBilled : <<include>>
+UC33 ..> UpdateStatus : <<include>>
+
+UC34 ..> MarkBilled : <<include>>
+UC34 ..> UpdateStatus : <<include>>
+
+UC35 ..> CreateTxn : <<include>>
+UC35 ..> UpdateStatus : <<include>>
+
+UC41 ..> UpdateStatus : <<include>>
+
+note bottom of UC29
+  Preview without saving.
+  Returns line items snapshot.
+end note
+
+note bottom of UC35
+  Multi-payment support.
+  Updates status: PARTIAL/PAID
+end note
+
+note bottom of UC39
+  Public access via UUID.
+  For tenant self-service.
+end note
+
+@enduml

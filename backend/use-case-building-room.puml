@@ -1,0 +1,60 @@
+@startuml Building & Room Management
+
+title Use Case Diagram - Building & Room Management
+
+' Actors
+actor "Admin" as Admin
+
+' System Boundary
+rectangle "Smart Rental System - Building & Room Management" {
+
+  package "Building Management" {
+    usecase "UC-08\nCreate Building" as UC8
+    usecase "UC-09\nView Buildings" as UC9
+    usecase "UC-10\nView Building Detail" as UC10
+    usecase "UC-11\nUpdate Building" as UC11
+    usecase "UC-12\nDelete Building" as UC12
+  }
+
+  package "Room Management" {
+    usecase "UC-13\nCreate Room" as UC13
+    usecase "UC-14\nView Rooms" as UC14
+    usecase "UC-15\nView Room Detail" as UC15
+    usecase "UC-16\nUpdate Room Info" as UC16
+    usecase "UC-17\nUpdate Room Status" as UC17
+    usecase "UC-18\nDelete Room" as UC18
+    usecase "UC-19\nBulk Update Prices" as UC19
+    usecase "UC-20\nView Room Stats" as UC20
+  }
+
+  ' Internal use cases
+  usecase "Validate No Rooms Exist" as ValidateEmpty
+  usecase "Calculate Statistics" as CalcStats
+  usecase "Update Multiple Rooms" as UpdateMultiple
+
+}
+
+' Relationships
+Admin --> UC8
+Admin --> UC9
+Admin --> UC10
+Admin --> UC11
+Admin --> UC12
+
+Admin --> UC13
+Admin --> UC14
+Admin --> UC15
+Admin --> UC16
+Admin --> UC17
+Admin --> UC18
+Admin --> UC19
+Admin --> UC20
+
+' Include relationships
+UC9 ..> CalcStats : <<include>>
+UC10 ..> CalcStats : <<include>>
+UC12 ..> ValidateEmpty : <<include>>
+UC19 ..> UpdateMultiple : <<include>>
+UC20 ..> CalcStats : <<include>>
+
+@enduml

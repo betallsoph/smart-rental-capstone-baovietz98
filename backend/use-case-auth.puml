@@ -1,0 +1,57 @@
+@startuml Authentication & User Management
+
+title Use Case Diagram - Authentication Module
+
+' Actors
+actor "Admin" as Admin
+actor "Tenant" as Tenant
+actor "Email Service" as Email <<external>>
+
+' System Boundary
+rectangle "Smart Rental System - Authentication" {
+
+  usecase "UC-01\nLogin" as UC1
+  usecase "UC-02\nRegister" as UC2
+  usecase "UC-03\nForgot Password" as UC3
+  usecase "UC-04\nReset Password" as UC4
+  usecase "UC-05\nRefresh Token" as UC5
+  usecase "UC-06\nLogout" as UC6
+  usecase "UC-07\nGet Profile" as UC7
+
+  ' Internal use cases
+  usecase "Validate Credentials" as Validate
+  usecase "Generate JWT" as GenJWT
+  usecase "Send Reset Email" as SendEmail
+  usecase "Hash Password" as Hash
+
+}
+
+' Relationships
+Admin --> UC1
+Admin --> UC2
+Admin --> UC3
+Admin --> UC4
+Admin --> UC5
+Admin --> UC6
+Admin --> UC7
+
+Tenant --> UC1
+Tenant --> UC2
+Tenant --> UC3
+Tenant --> UC4
+Tenant --> UC5
+Tenant --> UC6
+Tenant --> UC7
+
+' Include relationships
+UC1 ..> Validate : <<include>>
+UC1 ..> GenJWT : <<include>>
+UC2 ..> Hash : <<include>>
+UC2 ..> GenJWT : <<include>>
+UC3 ..> SendEmail : <<include>>
+UC4 ..> Hash : <<include>>
+
+' External connection
+SendEmail --> Email : <<uses>>
+
+@enduml

@@ -1,0 +1,62 @@
+@startuml System Overview
+
+title Smart Rental System - Use Case Overview
+
+' Actors
+actor "Admin" as Admin
+actor "Tenant" as Tenant
+
+' System Boundary
+rectangle "Smart Rental Backend System" {
+
+  usecase "Authentication\n(6 use cases)" as Auth
+  usecase "Building Management\n(5 use cases)" as Building
+  usecase "Room Management\n(8 use cases)" as Room
+  usecase "Tenant Management\n(6 use cases)" as TenantMgmt
+  usecase "Contract Management\n(8 use cases)" as Contract
+  usecase "Service Management\n(5 use cases)" as Service
+  usecase "Meter Reading\n(9 use cases)" as Reading
+  usecase "Invoice Management\n(14 use cases)" as Invoice
+  usecase "Transaction Management\n(4 use cases)" as Transaction
+  usecase "Issue Management\n(5 use cases)" as Issue
+
+}
+
+' Admin has access to all modules
+Admin --> Auth
+Admin --> Building
+Admin --> Room
+Admin --> TenantMgmt
+Admin --> Contract
+Admin --> Service
+Admin --> Reading
+Admin --> Invoice
+Admin --> Transaction
+Admin --> Issue
+
+' Tenant has limited access
+Tenant --> Auth
+Tenant -[dotted]-> Invoice : "View Public Only"
+
+note right of Admin
+  Full system access
+  All CRUD operations
+  54+ use cases
+end note
+
+note right of Tenant
+  Limited access
+  - Login/Register
+  - View own invoices
+  3 use cases total
+end note
+
+note bottom of Invoice
+  Most complex module:
+  - Preview & Generate
+  - Multi-payment
+  - Bulk operations
+  - Public access
+end note
+
+@enduml

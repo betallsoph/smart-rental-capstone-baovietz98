@@ -1,0 +1,67 @@
+@startuml Contract Management
+
+title Use Case Diagram - Contract Management
+
+' Actors
+actor "Admin" as Admin
+
+' System Boundary
+rectangle "Smart Rental System - Contract Management" {
+
+  ' Main use cases
+  usecase "UC-21\nCreate Contract" as UC21
+  usecase "UC-22\nView Contracts" as UC22
+  usecase "UC-23\nView Contract Detail" as UC23
+  usecase "UC-24\nUpdate Contract" as UC24
+  usecase "UC-25\nTerminate Contract" as UC25
+  usecase "UC-26\nMove Room" as UC26
+  usecase "UC-27\nDelete Contract" as UC27
+  usecase "UC-28\nView Contract Stats" as UC28
+
+  ' Internal use cases
+  usecase "Update Room Status\nto RENTED" as UpdateRoomRented
+  usecase "Create Initial\nMeter Readings" as CreateInitReading
+  usecase "Calculate Pro-rata Rent" as CalcProRata
+  usecase "Calculate Utility\nSettlement" as CalcUtility
+  usecase "Calculate Deposit\nAdjustment" as CalcDeposit
+  usecase "Create Settlement\nInvoice" as CreateSettlement
+  usecase "Update Room Status\nto AVAILABLE" as UpdateRoomAvail
+
+}
+
+' Relationships
+Admin --> UC21
+Admin --> UC22
+Admin --> UC23
+Admin --> UC24
+Admin --> UC25
+Admin --> UC26
+Admin --> UC27
+Admin --> UC28
+
+' Include relationships for Create Contract
+UC21 ..> UpdateRoomRented : <<include>>
+UC21 ..> CreateInitReading : <<include>>
+
+' Include relationships for Move Room (complex)
+UC26 ..> CalcProRata : <<include>>
+UC26 ..> CalcUtility : <<include>>
+UC26 ..> CalcDeposit : <<include>>
+UC26 ..> CreateSettlement : <<include>>
+UC26 ..> CreateInitReading : <<include>>
+UC26 ..> UpdateRoomAvail : <<include>>
+UC26 ..> UpdateRoomRented : <<include>>
+
+' Include relationships for Terminate
+UC25 ..> UpdateRoomAvail : <<include>>
+
+note right of UC26
+  Most complex use case:
+  - Pro-rata calculation
+  - Utility settlement
+  - Deposit adjustment
+  - Room status updates
+  - Settlement invoice
+end note
+
+@enduml
