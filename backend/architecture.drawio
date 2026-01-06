@@ -1,0 +1,128 @@
+<mxfile host="app.diagrams.net" modified="2026-01-06T00:00:00.000Z" agent="5.0" version="24.0.0">
+  <diagram name="NestJS Architecture" id="architecture">
+    <mxGraphModel dx="1434" dy="844" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Client -->
+        <mxCell id="client" value="👤 Client&#xa;(Frontend)" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="80" y="280" width="60" height="120" as="geometry" />
+        </mxCell>
+
+        <!-- Request Arrow -->
+        <mxCell id="request1" value="1. Request" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" edge="1" parent="1" source="client" target="guards">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Guards -->
+        <mxCell id="guards" value="🛡️ Guards&#xa;JWT Auth + Roles" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="240" y="300" width="160" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow to Controller -->
+        <mxCell id="arrow2" value="2. Authorized" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" edge="1" parent="1" source="guards" target="controller">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Controller -->
+        <mxCell id="controller" value="🎮 Controller&#xa;Route Handlers" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="480" y="300" width="160" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow to Service -->
+        <mxCell id="arrow3" value="3. Call Service" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" edge="1" parent="1" source="controller" target="service">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="720" y="340" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Service -->
+        <mxCell id="service" value="⚙️ Service&#xa;Business Logic" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="720" y="300" width="160" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow down to Prisma -->
+        <mxCell id="arrow4" value="4. Database&#xa;Operations" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" edge="1" parent="1" source="service" target="prisma">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Prisma Service -->
+        <mxCell id="prisma" value="🔌 Prisma Service&#xa;ORM Layer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="720" y="460" width="160" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Arrow to Database -->
+        <mxCell id="arrow5" value="5. SQL Query" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" edge="1" parent="1" source="prisma" target="database">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Database -->
+        <mxCell id="database" value="🗄️ PostgreSQL&#xa;Database" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#f5f5f5;strokeColor=#666666;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="740" y="620" width="120" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- Return Arrow from Database -->
+        <mxCell id="arrow6" value="6. Data" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;" edge="1" parent="1" source="database" target="prisma">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="920" y="670" />
+              <mxPoint x="920" y="500" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Return to Service -->
+        <mxCell id="arrow7" value="7. Entity" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;" edge="1" parent="1" source="prisma" target="service">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="960" y="500" />
+              <mxPoint x="960" y="340" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Return to Controller -->
+        <mxCell id="arrow8" value="8. DTO" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;" edge="1" parent="1" source="service" target="controller">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="800" y="240" />
+              <mxPoint x="560" y="240" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Return to Client -->
+        <mxCell id="arrow9" value="9. Response" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;" edge="1" parent="1" source="controller" target="client">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="560" y="200" />
+              <mxPoint x="110" y="200" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Abstraction Layer Box -->
+        <mxCell id="abstraction" value="{ Abstraction Layer }" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#666666;strokeWidth=2;dashed=1;fontSize=16;fontStyle=2" vertex="1" parent="1">
+          <mxGeometry x="690" y="260" width="220" height="320" as="geometry" />
+        </mxCell>
+
+        <!-- Title -->
+        <mxCell id="title" value="NestJS Backend Architecture - Smart Rental System" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="240" y="80" width="640" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Modules List -->
+        <mxCell id="modules" value="&lt;b&gt;12 Core Modules:&lt;/b&gt;&lt;br&gt;• Auth&lt;br&gt;• Buildings&lt;br&gt;• Rooms&lt;br&gt;• Tenants&lt;br&gt;• Contracts&lt;br&gt;• Services&lt;br&gt;• Readings&lt;br&gt;• Invoices&lt;br&gt;• Transactions&lt;br&gt;• Issues&lt;br&gt;• Upload&lt;br&gt;• Mail" style="rounded=1;whiteSpace=wrap;html=1;align=left;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;verticalAlign=top;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="460" width="160" height="260" as="geometry" />
+        </mxCell>
+
+        <!-- Technology Stack -->
+        <mxCell id="tech" value="&lt;b&gt;Tech Stack:&lt;/b&gt;&lt;br&gt;• NestJS 11.x&lt;br&gt;• TypeScript 5.7+&lt;br&gt;• Prisma 6.19&lt;br&gt;• PostgreSQL 15&lt;br&gt;• JWT Auth&lt;br&gt;• Bcrypt&lt;br&gt;• Cloudinary&lt;br&gt;• Nodemailer&lt;br&gt;• Swagger" style="rounded=1;whiteSpace=wrap;html=1;align=left;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;verticalAlign=top;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="240" y="460" width="160" height="220" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
