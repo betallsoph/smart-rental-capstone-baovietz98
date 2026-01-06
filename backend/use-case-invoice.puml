@@ -1,0 +1,103 @@
+@startuml Invoice Management - Use Case Diagram
+
+left to right direction
+
+' Actors
+actor "Admin" as Admin
+actor "Tenant" as Tenant
+
+' External Systems
+actor "Database" as DB <<system>>
+
+' System Boundary
+rectangle "Invoice Management Subsystem" {
+
+  ' Main use cases
+  usecase "Preview Invoice" as Preview
+  usecase "Generate Draft Invoice" as Generate
+  usecase "Bulk Generate Invoices" as BulkGenerate
+  usecase "Update Draft Invoice" as UpdateDraft
+  usecase "Publish Invoice" as Publish
+  usecase "Unpublish Invoice" as Unpublish
+  usecase "Record Payment" as Payment
+  usecase "Cancel Invoice" as Cancel
+  usecase "View Invoices" as ViewAll
+  usecase "View Invoice Detail" as ViewDetail
+  usecase "View Invoice Public" as ViewPublic
+  usecase "Delete Invoice" as Delete
+
+  ' Internal use cases
+  usecase "Calculate Room Charge" as CalcRoom
+  usecase "Calculate Service Charge" as CalcService
+  usecase "Calculate Previous Debt" as CalcDebt
+  usecase "Validate Readings Exist" as ValidateRead
+  usecase "Create Line Items" as CreateLines
+  usecase "Update Invoice Status" as UpdateStatus
+  usecase "Create Transaction" as CreateTxn
+  usecase "Mark Readings as Billed" as MarkBilled
+}
+
+' Admin connections
+Admin --> Preview
+Admin --> Generate
+Admin --> BulkGenerate
+Admin --> UpdateDraft
+Admin --> Publish
+Admin --> Unpublish
+Admin --> Payment
+Admin --> Cancel
+Admin --> ViewAll
+Admin --> ViewDetail
+Admin --> Delete
+
+' Tenant connections
+Tenant --> ViewPublic
+
+' Include relationships
+Preview ..> ValidateRead : <<include>>
+Preview ..> CalcRoom : <<include>>
+Preview ..> CalcService : <<include>>
+Preview ..> CalcDebt : <<include>>
+Preview ..> CreateLines : <<include>>
+
+Generate ..> Preview : <<include>>
+BulkGenerate ..> Generate : <<include>>
+
+Publish ..> MarkBilled : <<include>>
+Publish ..> UpdateStatus : <<include>>
+
+Unpublish ..> MarkBilled : <<include>>
+Unpublish ..> UpdateStatus : <<include>>
+
+Payment ..> CreateTxn : <<include>>
+Payment ..> UpdateStatus : <<include>>
+
+Cancel ..> UpdateStatus : <<include>>
+
+' Extend relationships
+UpdateDraft .> Generate : <<extend>>
+
+' System interactions
+Preview --> DB : <<query>>
+Generate --> DB : <<create>>
+Payment --> DB : <<update>>
+
+note right of Preview
+  Calculate invoice without saving.
+  Returns line items snapshot
+  for frontend preview.
+end note
+
+note right of Payment
+  Multi-payment support.
+  Updates invoice status:
+  PARTIAL or PAID
+end note
+
+note bottom of ViewPublic
+  Public access via UUID.
+  No authentication required.
+  For tenant self-service.
+end note
+
+@enduml

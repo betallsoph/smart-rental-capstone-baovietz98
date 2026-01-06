@@ -1,0 +1,165 @@
+@startuml Smart Rental System - Use Case Diagram
+
+' Actors
+actor "Admin" as Admin
+actor "Tenant" as Tenant
+
+' External Systems
+actor "Email Service" as Email <<service>>
+actor "Cloudinary" as Cloud <<service>>
+
+' System Boundary
+rectangle "Smart Rental Backend System" {
+
+  ' Authentication Module
+  package "Authentication" {
+    usecase "Login" as UC1
+    usecase "Register" as UC2
+    usecase "Reset Password" as UC3
+    usecase "Refresh Token" as UC4
+    usecase "Logout" as UC5
+  }
+
+  ' Building Management
+  package "Building Management" {
+    usecase "Create Building" as UC6
+    usecase "View Buildings" as UC7
+    usecase "Update Building" as UC8
+    usecase "Delete Building" as UC9
+  }
+
+  ' Room Management
+  package "Room Management" {
+    usecase "Create Room" as UC10
+    usecase "View Rooms" as UC11
+    usecase "Update Room" as UC12
+    usecase "Change Room Status" as UC13
+    usecase "Delete Room" as UC14
+    usecase "Bulk Update Prices" as UC15
+  }
+
+  ' Tenant Management
+  package "Tenant Management" {
+    usecase "Create Tenant" as UC16
+    usecase "View Tenants" as UC17
+    usecase "Update Tenant" as UC18
+    usecase "Delete Tenant" as UC19
+    usecase "Upload CCCD" as UC20
+  }
+
+  ' Contract Management
+  package "Contract Management" {
+    usecase "Create Contract" as UC21
+    usecase "View Contracts" as UC22
+    usecase "Update Contract" as UC23
+    usecase "Terminate Contract" as UC24
+    usecase "Move Room" as UC25
+    usecase "Update Room Status" as UC26
+    usecase "Create Initial Readings" as UC27
+  }
+
+  ' Service Management
+  package "Service Management" {
+    usecase "Manage Services" as UC28
+    usecase "Create Service" as UC29
+    usecase "Update Service" as UC30
+  }
+
+  ' Meter Reading
+  package "Meter Reading" {
+    usecase "Record Reading" as UC31
+    usecase "Bulk Record Readings" as UC32
+    usecase "View Readings" as UC33
+    usecase "View Unread Rooms" as UC34
+  }
+
+  ' Invoice Management
+  package "Invoice Management" {
+    usecase "Preview Invoice" as UC35
+    usecase "Generate Invoice" as UC36
+    usecase "Bulk Generate Invoices" as UC37
+    usecase "Publish Invoice" as UC38
+    usecase "Record Payment" as UC39
+    usecase "View Invoices" as UC40
+    usecase "View Invoice Public" as UC41
+    usecase "Calculate Amounts" as UC42
+    usecase "Create Transaction" as UC43
+  }
+
+  ' Transaction Management
+  package "Transaction Management" {
+    usecase "View Transactions" as UC44
+    usecase "View Transaction Stats" as UC45
+  }
+
+  ' Issue Management
+  package "Issue Management" {
+    usecase "Report Issue" as UC46
+    usecase "View Issues" as UC47
+    usecase "Update Issue Status" as UC48
+  }
+}
+
+' Admin connections
+Admin --> UC1
+Admin --> UC2
+Admin --> UC3
+Admin --> UC4
+Admin --> UC5
+Admin --> UC6
+Admin --> UC7
+Admin --> UC8
+Admin --> UC9
+Admin --> UC10
+Admin --> UC11
+Admin --> UC12
+Admin --> UC13
+Admin --> UC14
+Admin --> UC15
+Admin --> UC16
+Admin --> UC17
+Admin --> UC18
+Admin --> UC19
+Admin --> UC20
+Admin --> UC21
+Admin --> UC22
+Admin --> UC23
+Admin --> UC24
+Admin --> UC25
+Admin --> UC28
+Admin --> UC29
+Admin --> UC30
+Admin --> UC31
+Admin --> UC32
+Admin --> UC33
+Admin --> UC34
+Admin --> UC35
+Admin --> UC36
+Admin --> UC37
+Admin --> UC38
+Admin --> UC39
+Admin --> UC40
+Admin --> UC44
+Admin --> UC45
+Admin --> UC46
+Admin --> UC47
+Admin --> UC48
+
+' Tenant connections
+Tenant --> UC1
+Tenant --> UC41
+
+' Include relationships
+UC21 .> UC26 : <<include>>
+UC21 .> UC27 : <<include>>
+UC25 .> UC26 : <<include>>
+UC25 .> UC27 : <<include>>
+UC35 .> UC42 : <<include>>
+UC36 .> UC42 : <<include>>
+UC39 .> UC43 : <<include>>
+
+' External services
+UC3 --> Email : <<uses>>
+UC20 --> Cloud : <<uses>>
+
+@enduml
