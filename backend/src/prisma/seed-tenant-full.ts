@@ -1,4 +1,12 @@
-import { PrismaClient, InvoiceStatus, CalculationType, UserRole, ServiceType, RoomStatus, Gender } from '@prisma/client';
+import {
+  PrismaClient,
+  InvoiceStatus,
+  CalculationType,
+  UserRole,
+  ServiceType,
+  RoomStatus,
+  Gender,
+} from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
@@ -48,16 +56,16 @@ async function main() {
       calculationType: CalculationType.PER_ROOM,
     },
   });
-  
+
   const trashService = await prisma.service.create({
-      data: {
-        name: 'Vệ sinh rác',
-        unit: 'người',
-        price: 30000,
-        type: ServiceType.FIXED,
-        calculationType: CalculationType.PER_PERSON,
-      },
-    });
+    data: {
+      name: 'Vệ sinh rác',
+      unit: 'người',
+      price: 30000,
+      type: ServiceType.FIXED,
+      calculationType: CalculationType.PER_PERSON,
+    },
+  });
 
   // 4. Create Room
   const room = await prisma.room.create({
@@ -86,14 +94,14 @@ async function main() {
       phoneNumber: phone,
     },
   });
-  
+
   const tenant = await prisma.tenant.create({
-      data: {
-          fullName: user.name,
-          phone: user.phoneNumber || phone,
-          cccd: '123456789012',
-          userId: user.id, // Link generated User ID
-      }
+    data: {
+      fullName: user.name,
+      phone: user.phoneNumber || phone,
+      cccd: '123456789012',
+      userId: user.id, // Link generated User ID
+    },
   });
 
   // 6. Create Contract
@@ -177,16 +185,19 @@ async function main() {
       amount: wifiService.price,
     },
     {
-        type: 'FIXED',
-        name: trashService.name,
-        quantity: 2, // Per person (2 people)
-        unit: trashService.unit,
-        unitPrice: trashService.price,
-        amount: trashService.price * 2,
-      },
+      type: 'FIXED',
+      name: trashService.name,
+      quantity: 2, // Per person (2 people)
+      unit: trashService.unit,
+      unitPrice: trashService.price,
+      amount: trashService.price * 2,
+    },
   ];
 
-  const totalAmount = invoiceLineItems.reduce((sum, item) => sum + item.amount, 0);
+  const totalAmount = invoiceLineItems.reduce(
+    (sum, item) => sum + item.amount,
+    0,
+  );
 
   const invoice = await prisma.invoice.create({
     data: {
@@ -195,8 +206,8 @@ async function main() {
       roomCharge: room.price,
       serviceCharge: totalAmount - room.price,
       extraCharge: 0,
-       previousDebt: 0,
-       discount: 0,
+      previousDebt: 0,
+      discount: 0,
       totalAmount: totalAmount,
       debtAmount: totalAmount,
       paidAmount: 0,
@@ -207,13 +218,15 @@ async function main() {
 
   // Mark readings as billed
   await prisma.serviceReading.updateMany({
-      where: { id: { in: [elecReading.id, waterReading.id] } },
-      data: { isBilled: true, invoiceId: invoice.id }
+    where: { id: { in: [elecReading.id, waterReading.id] } },
+    data: { isBilled: true, invoiceId: invoice.id },
   });
 
   console.log(`✅ Seeded successfully!`);
   console.log(`User: demo.tenant@gmail.com / 123456`);
-  console.log(`Invoice ID: ${invoice.id}, Total: ${totalAmount.toLocaleString()} VNĐ`);
+  console.log(
+    `Invoice ID: ${invoice.id}, Total: ${totalAmount.toLocaleString()} VNĐ`,
+  );
 }
 
 main()

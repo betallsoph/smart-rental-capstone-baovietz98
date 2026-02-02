@@ -29,7 +29,7 @@ import { GetUser } from '../auth/decorators/get-user.decorator';
 @ApiBearerAuth()
 @Controller('contracts')
 export class ContractsController {
-  constructor(private readonly contractsService: ContractsService) { }
+  constructor(private readonly contractsService: ContractsService) {}
 
   @Post()
   @ApiOperation({
@@ -48,7 +48,11 @@ export class ContractsController {
   @Post('move')
   @ApiOperation({ summary: 'Chuyển phòng cho hợp đồng' })
   @ApiResponse({ status: 200, description: 'Chuyển phòng thành công' })
-  @ApiResponse({ status: 400, description: 'Lỗi validation (Phòng mới không trống, Hợp đồng đã kết thúc...)' })
+  @ApiResponse({
+    status: 400,
+    description:
+      'Lỗi validation (Phòng mới không trống, Hợp đồng đã kết thúc...)',
+  })
   move(@Body() moveContractDto: MoveContractDto) {
     return this.contractsService.moveContract(moveContractDto);
   }
@@ -92,23 +96,27 @@ export class ContractsController {
     return this.contractsService.findByRoom(roomId);
   }
 
-// ... imports
+  // ... imports
 
   @Get('tenant/:tenantId')
-    @ApiOperation({
-        summary: 'Lấy danh sách hợp đồng của Tenant',
-        description: 'Lấy danh sách hợp đồng của tenant đang đăng nhập',
-    })
+  @ApiOperation({
+    summary: 'Lấy danh sách hợp đồng của Tenant',
+    description: 'Lấy danh sách hợp đồng của tenant đang đăng nhập',
+  })
   @Roles('ADMIN', 'TENANT')
   @ApiParam({ name: 'tenantId', type: Number })
-  findByTenant(@Param('tenantId', ParseIntPipe) tenantId: number, @GetUser() user: any) {
+  findByTenant(
+    @Param('tenantId', ParseIntPipe) tenantId: number,
+    @GetUser() user: any,
+  ) {
     return this.contractsService.findByTenant(tenantId, user);
   }
 
   @Get(':id')
   @ApiOperation({
     summary: 'Lấy chi tiết hợp đồng',
-    description: 'Lấy thông tin chi tiết của một hợp đồng (cho Admin hoặc Tenant sở hữu)',
+    description:
+      'Lấy thông tin chi tiết của một hợp đồng (cho Admin hoặc Tenant sở hữu)',
   })
   @ApiParam({ name: 'id', type: Number })
   @Roles('ADMIN', 'TENANT')

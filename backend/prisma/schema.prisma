@@ -43,6 +43,7 @@ model Tenant {
   user      User?           @relation(fields: [userId], references: [id])
   vehicles  Vehicle[]
   requests  GuestRequest[]
+  notifications Notification[]
 }
 
 model Contract {
@@ -136,11 +137,11 @@ model Transaction {
   type       TransactionType
   date       DateTime        @default(now())
   note       String?
-  contractId Int
+  contractId Int?
   invoiceId  Int?
   createdAt  DateTime        @default(now())
   updatedAt  DateTime        @updatedAt
-  contract   Contract        @relation(fields: [contractId], references: [id])
+  contract   Contract?       @relation(fields: [contractId], references: [id])
   invoice    Invoice?        @relation(fields: [invoiceId], references: [id])
 }
 
@@ -240,10 +241,23 @@ enum Gender {
 enum TransactionType {
   DEPOSIT
   INVOICE_PAYMENT
+  EXPENSE
   OTHER
 }
 
 enum UserRole {
   ADMIN
   TENANT
+}
+
+model Notification {
+  id          Int      @id @default(autoincrement())
+  title       String
+  content     String
+  type        String   @default("GENERAL") // GENERAL, PAYMENT, SYSTEM
+  isRead      Boolean  @default(false)
+  tenantId    Int?
+  createdAt   DateTime @default(now())
+  
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id])
 }

@@ -15,6 +15,7 @@ import { InvoicesModule } from './invoices/invoices.module';
 import { IssuesModule } from './issues/issues.module';
 import { TransactionsModule } from './transactions/transactions.module';
 import { AuthModule } from './auth/auth.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 import { join } from 'path';
@@ -37,6 +38,7 @@ import { join } from 'path';
     IssuesModule,
     TransactionsModule,
     AuthModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [
@@ -53,5 +55,4 @@ import { join } from 'path';
     },
   ],
 })
-export class AppModule { }
-
+export class AppModule {}

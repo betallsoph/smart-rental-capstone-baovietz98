@@ -47,6 +47,7 @@ const UploadCCCD = ({
   side: "front" | "back";
   onUpload: (url: string) => void;
   defaultValue?: string;
+  messageApi: any;
 }) => {
   const [loading, setLoading] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(defaultValue || null);
@@ -70,10 +71,10 @@ const UploadCCCD = ({
       const url = res.data.data.url;
       setImageUrl(url);
       onUpload(url);
-      message.success("Upload ảnh thành công!");
+      messageApi.success("Upload ảnh thành công!");
     } catch (error) {
       console.error(error);
-      message.error("Lỗi upload ảnh");
+      messageApi.error("Lỗi upload ảnh");
     } finally {
       setLoading(false);
     }
@@ -108,12 +109,14 @@ const UploadCCCD = ({
 };
 
 export default function TenantsPage() {
+  const [messageApi, contextHolder] = message.useMessage();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form] = Form.useForm();
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
 
   // State for viewing full details
@@ -129,7 +132,7 @@ export default function TenantsPage() {
       setTenants(Array.isArray(res.data) ? res.data : []);
     } catch (error) {
       console.error(error);
-      message.error("Không thể tải danh sách khách thuê!");
+      messageApi.error("Không thể tải danh sách khách thuê!");
     } finally {
       setLoading(false);
     }
@@ -142,32 +145,42 @@ export default function TenantsPage() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
+  // Sync form data when modal opens for editing
+  useEffect(() => {
+    if (isModalOpen && editingTenant) {
+      form.setFieldsValue(editingTenant);
+    } else if (isModalOpen && !editingTenant) {
+      form.resetFields();
+    }
+  }, [isModalOpen, editingTenant, form]);
+
   const handleSaveTenant = async (values: Omit<Tenant, "id" | "contracts">) => {
     try {
       if (editingId) {
         await axios.patch(`/tenants/${editingId}`, values);
-        message.success("Cập nhật khách thuê thành công!");
+        messageApi.success("Cập nhật khách thuê thành công!");
       } else {
         await axios.post("/tenants", values);
-        message.success("Thêm khách thuê thành công!");
+        messageApi.success("Thêm khách thuê thành công!");
       }
       form.resetFields();
       setIsModalOpen(false);
       setEditingId(null);
+      setEditingTenant(null);
       fetchTenants(searchTerm);
     } catch (error: any) {
       console.error(error);
       if (error.response?.status === 409) {
-        message.error("Số điện thoại đã tồn tại!");
+        messageApi.error("Số điện thoại đã tồn tại!");
       } else {
-        message.error("Lỗi khi lưu khách thuê");
+        messageApi.error("Lỗi khi lưu khách thuê");
       }
     }
   };
 
   const handleEdit = (tenant: Tenant) => {
     setEditingId(tenant.id);
-    form.setFieldsValue(tenant);
+    setEditingTenant(tenant);
     setIsModalOpen(true);
   };
 
@@ -179,13 +192,13 @@ export default function TenantsPage() {
     if (deleteId) {
       try {
         await axios.delete(`/tenants/${deleteId}`);
-        message.success("Đã xóa khách thuê!");
+        messageApi.success("Đã xóa khách thuê!");
         fetchTenants(searchTerm);
       } catch (error: any) {
         if (error.response?.status === 409) {
-          message.error("Không thể xóa: Khách đang có hợp đồng!");
+          messageApi.error("Không thể xóa: Khách đang có hợp đồng!");
         } else {
-          message.error("Lỗi khi xóa khách thuê");
+          messageApi.error("Lỗi khi xóa khách thuê");
         }
       } finally {
         setDeleteId(null);
@@ -202,10 +215,12 @@ export default function TenantsPage() {
     form.resetFields();
     setIsModalOpen(false);
     setEditingId(null);
+    setEditingTenant(null);
   };
 
   return (
     <div className="claude-page p-6 md:p-12">
+      {contextHolder}
       <div className="max-w-7xl mx-auto">
         {/* HEADER */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
@@ -496,6 +511,7 @@ export default function TenantsPage() {
                       onUpload={(url) =>
                         form.setFieldValue(["info", "cccdFront"], url)
                       }
+                      messageApi={messageApi}
                     />
                     <Form.Item name={["info", "cccdFront"]} hidden>
                       <Input />
@@ -508,6 +524,7 @@ export default function TenantsPage() {
                       onUpload={(url) =>
                         form.setFieldValue(["info", "cccdBack"], url)
                       }
+                      messageApi={messageApi}
                     />
                     <Form.Item name={["info", "cccdBack"]} hidden>
                       <Input />
@@ -664,7 +681,7 @@ export default function TenantsPage() {
                         onClick={() =>
                           window.open(
                             selectedTenantDetail.info!.cccdFront!,
-                            "_blank"
+                            "_blank",
                           )
                         }
                       />
@@ -684,7 +701,7 @@ export default function TenantsPage() {
                         onClick={() =>
                           window.open(
                             selectedTenantDetail.info!.cccdBack!,
-                            "_blank"
+                            "_blank",
                           )
                         }
                       />

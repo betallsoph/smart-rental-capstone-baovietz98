@@ -34,8 +34,10 @@ import { useRouter } from "next/navigation";
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("vi-VN").format(value);
 
+import RoomDetailModal from "@/components/rooms/RoomDetailModal";
+
 export default function AllRoomsPage() {
-  const router = useRouter(); // For navigating to Issues page
+  const router = useRouter();
 
   // Data State
   const [rooms, setRooms] = useState<any[]>([]);
@@ -52,6 +54,9 @@ export default function AllRoomsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingRoom, setEditingRoom] = useState<any>(null);
+
+  // Detail Modal State
+  const [detailRoomId, setDetailRoomId] = useState<number | null>(null);
 
   // Advanced Maintenance State
   const [maintenanceRoom, setMaintenanceRoom] = useState<any>(null); // Room triggering maintenance
@@ -235,7 +240,7 @@ export default function AllRoomsPage() {
     setSelectedRooms((prev) =>
       prev.includes(roomId)
         ? prev.filter((id) => id !== roomId)
-        : [...prev, roomId]
+        : [...prev, roomId],
     );
   };
 
@@ -392,7 +397,7 @@ export default function AllRoomsPage() {
               value={activeBuildingFilter}
               onChange={(e) =>
                 setActiveBuildingFilter(
-                  e.target.value === "ALL" ? "ALL" : Number(e.target.value)
+                  e.target.value === "ALL" ? "ALL" : Number(e.target.value),
                 )
               }
               className="appearance-none w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl font-medium cursor-pointer hover:border-[#D97757] focus:outline-none focus:ring-2 focus:ring-[#D97757]/20 transition-all text-gray-700 shadow-sm"
@@ -479,15 +484,15 @@ export default function AllRoomsPage() {
                               const activeIssues = room.issues.filter(
                                 (i: any) =>
                                   i.status === "OPEN" ||
-                                  i.status === "PROCESSING"
+                                  i.status === "PROCESSING",
                               );
                               if (activeIssues.length === 0) return null;
 
                               const openIssues = activeIssues.filter(
-                                (i: any) => i.status === "OPEN"
+                                (i: any) => i.status === "OPEN",
                               );
                               const processingIssues = activeIssues.filter(
-                                (i: any) => i.status === "PROCESSING"
+                                (i: any) => i.status === "PROCESSING",
                               );
 
                               return (
@@ -557,15 +562,15 @@ export default function AllRoomsPage() {
                               room.status === "RENTED"
                                 ? "bg-pink-100 text-pink-700"
                                 : room.status === "MAINTENANCE"
-                                ? "bg-yellow-100 text-yellow-700"
-                                : "bg-green-100 text-green-700"
+                                  ? "bg-yellow-100 text-yellow-700"
+                                  : "bg-green-100 text-green-700"
                             }`}
                           >
                             {room.status === "RENTED"
                               ? "ĐANG Ở"
                               : room.status === "MAINTENANCE"
-                              ? "BẢO TRÌ"
-                              : "TRỐNG"}
+                                ? "BẢO TRÌ"
+                                : "TRỐNG"}
                           </span>
                         </td>
                         <td className="p-4 pr-6 text-right">
@@ -635,11 +640,15 @@ export default function AllRoomsPage() {
                       if (
                         (e.target as HTMLElement).closest("button") ||
                         (e.target as HTMLElement).closest(
-                          ".ant-dropdown-trigger"
+                          ".ant-dropdown-trigger",
                         )
                       )
                         return;
-                      if (isSelectionMode) toggleSelection(room.id);
+                      if (isSelectionMode) {
+                        toggleSelection(room.id);
+                      } else {
+                        setDetailRoomId(room.id);
+                      }
                     }}
                     className={`
                              relative flex flex-col justify-between transition-all cursor-pointer overflow-hidden rounded-2xl group
@@ -650,8 +659,8 @@ export default function AllRoomsPage() {
                                      room.status === "AVAILABLE"
                                        ? "bg-[#F0FDF4]" /* Subtle Green for Available */
                                        : room.status === "MAINTENANCE"
-                                       ? "bg-[#FEFCE8]" /* Subtle Yellow for Maintenance */
-                                       : "bg-white" /* White for Rented/Others */
+                                         ? "bg-[#FEFCE8]" /* Subtle Yellow for Maintenance */
+                                         : "bg-white" /* White for Rented/Others */
                                    }`
                              }
                          `}
@@ -755,15 +764,15 @@ export default function AllRoomsPage() {
                               room.status === "RENTED"
                                 ? "bg-pink-100 text-pink-700"
                                 : room.status === "MAINTENANCE"
-                                ? "bg-yellow-100 text-yellow-700"
-                                : "bg-green-100 text-green-700"
+                                  ? "bg-yellow-100 text-yellow-700"
+                                  : "bg-green-100 text-green-700"
                             }`}
                           >
                             {room.status === "RENTED"
                               ? "ĐANG Ở"
                               : room.status === "MAINTENANCE"
-                              ? "BẢO TRÌ"
-                              : "TRỐNG"}{" "}
+                                ? "BẢO TRÌ"
+                                : "TRỐNG"}{" "}
                             <MoreOutlined className="text-[10px]" />
                           </div>
                         </div>
@@ -787,7 +796,7 @@ export default function AllRoomsPage() {
                         if (!room.issues) return null;
                         const activeIssues = room.issues.filter(
                           (i: any) =>
-                            i.status === "OPEN" || i.status === "PROCESSING"
+                            i.status === "OPEN" || i.status === "PROCESSING",
                         );
                         if (activeIssues.length === 0) return null;
 
@@ -1016,7 +1025,7 @@ export default function AllRoomsPage() {
           // Optimistic Check via API to be sure
           try {
             const res = await axios.get(
-              `/contracts/room/${maintenanceRoom.id}`
+              `/contracts/room/${maintenanceRoom.id}`,
             );
             const contracts = res.data;
             const active = contracts.find((c: any) => c.isActive);
@@ -1065,7 +1074,7 @@ export default function AllRoomsPage() {
         contractId={moveContractId || undefined}
         // Filter AVAILABLE rooms only, exclude current room
         availableRooms={rooms.filter(
-          (r) => r.status === "AVAILABLE" && r.id !== warningRoom?.id
+          (r) => r.status === "AVAILABLE" && r.id !== warningRoom?.id,
         )}
         services={[]} // TODO: Fetch services from API
         onSuccess={() => {
@@ -1075,6 +1084,11 @@ export default function AllRoomsPage() {
           message.success("Đã chuyển phòng thành công!");
           fetchData(); // Reload rooms
         }}
+      />
+      <RoomDetailModal
+        open={!!detailRoomId}
+        roomId={detailRoomId}
+        onCancel={() => setDetailRoomId(null)}
       />
     </div>
   );

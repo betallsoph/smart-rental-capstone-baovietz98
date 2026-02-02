@@ -9,7 +9,13 @@ import {
   Query,
   ParseIntPipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiQuery, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiQuery,
+  ApiParam,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { ReadingsService } from './readings.service';
 import { CreateReadingDto, UpdateReadingDto } from './dto';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -18,7 +24,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 @ApiBearerAuth()
 @Controller('readings')
 export class ReadingsController {
-  constructor(private readonly readingsService: ReadingsService) { }
+  constructor(private readonly readingsService: ReadingsService) {}
 
   @Get('list')
   @Roles('ADMIN')

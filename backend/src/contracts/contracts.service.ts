@@ -174,15 +174,17 @@ export class ContractsService {
   async findByTenant(tenantId: number, user?: any) {
     // Validate access for TENANT
     if (user && user.role === 'TENANT') {
-        // Tenants can only view their own contracts
-        // First find the tenant record for this user
-        const tenant = await this.prisma.tenant.findUnique({
-             where: { userId: user.id }
-        });
-        
-        if (!tenant || tenant.id !== tenantId) {
-             throw new ForbiddenException('Bạn không có quyền xem hợp đồng của khách thuê khác');
-        }
+      // Tenants can only view their own contracts
+      // First find the tenant record for this user
+      const tenant = await this.prisma.tenant.findUnique({
+        where: { userId: user.id },
+      });
+
+      if (!tenant || tenant.id !== tenantId) {
+        throw new ForbiddenException(
+          'Bạn không có quyền xem hợp đồng của khách thuê khác',
+        );
+      }
     }
 
     return this.prisma.contract.findMany({
@@ -221,13 +223,15 @@ export class ContractsService {
 
     // Validate access for TENANT
     if (user && user.role === 'TENANT') {
-         const tenant = await this.prisma.tenant.findUnique({
-              where: { userId: user.id }
-         });
-         
-         if (!tenant || contract.tenantId !== tenant.id) {
-              throw new ForbiddenException(`Bạn không có quyền xem chi tiết hợp đồng này. Contract Tenant: ${contract.tenantId}, Your Tenant: ${tenant?.id}`);
-         }
+      const tenant = await this.prisma.tenant.findUnique({
+        where: { userId: user.id },
+      });
+
+      if (!tenant || contract.tenantId !== tenant.id) {
+        throw new ForbiddenException(
+          `Bạn không có quyền xem chi tiết hợp đồng này. Contract Tenant: ${contract.tenantId}, Your Tenant: ${tenant?.id}`,
+        );
+      }
     }
 
     return contract;
@@ -371,7 +375,7 @@ export class ContractsService {
 
   /**
    * Chuyển phòng (Move Room) - PROFESSIONAL VERSION
-   * 
+   *
    * 1. Validate: Contract active, new room available
    * 2. Calculate Pro-rata rent for old room
    * 3. Calculate Utility Settlement (electric/water usage)
@@ -382,11 +386,11 @@ export class ContractsService {
    * 8. Update room statuses
    */
   async moveContract(dto: MoveContractDto) {
-    const { 
-      contractId, 
-      newRoomId, 
+    const {
+      contractId,
+      newRoomId,
       moveDate,
-      oldRoomStatus, 
+      oldRoomStatus,
       newRentPrice,
       newDepositAmount,
       oldRoomReadings,
@@ -408,7 +412,9 @@ export class ContractsService {
     }
 
     if (!contract.isActive) {
-      throw new BadRequestException('Hợp đồng này đã kết thúc, không thể chuyển phòng.');
+      throw new BadRequestException(
+        'Hợp đồng này đã kết thúc, không thể chuyển phòng.',
+      );
     }
 
     if (contract.roomId === newRoomId) {
@@ -425,63 +431,81 @@ export class ContractsService {
     }
 
     if (newRoom.status !== RoomStatus.AVAILABLE) {
-      throw new BadRequestException(`Phòng mới ${newRoom.name} không ở trạng thái Trống (AVAILABLE).`);
+      throw new BadRequestException(
+        `Phòng mới ${newRoom.name} không ở trạng thái Trống (AVAILABLE).`,
+      );
     }
 
     // 3. Calculate Pro-rata Rent for old room (days this month at old price)
-    const daysInMonth = new Date(moveDateObj.getFullYear(), moveDateObj.getMonth() + 1, 0).getDate();
+    const daysInMonth = new Date(
+      moveDateObj.getFullYear(),
+      moveDateObj.getMonth() + 1,
+      0,
+    ).getDate();
     const daysAtOldRoom = Math.max(0, moveDateObj.getDate() - 1); // Days before move date
     const oldRoomProRata = (daysAtOldRoom / daysInMonth) * contract.price;
 
     // 4. Calculate Utility Settlement (if readings provided)
-    const utilitySettlement: { serviceId: number; serviceName: string; usage: number; unitPrice: number; cost: number }[] = [];
-    
+    const utilitySettlement: {
+      serviceId: number;
+      serviceName: string;
+      usage: number;
+      unitPrice: number;
+      cost: number;
+    }[] = [];
+
     if (oldRoomReadings && oldRoomReadings.length > 0) {
       for (const reading of oldRoomReadings) {
         // Get the last reading for this service
         const lastReading = await this.prisma.serviceReading.findFirst({
           where: { contractId, serviceId: reading.serviceId },
           orderBy: { readingDate: 'desc' },
-          include: { service: true }
+          include: { service: true },
         });
 
         const lastIndex = lastReading?.newIndex || 0;
         const usage = Math.max(0, reading.indexValue - lastIndex);
-        const unitPrice = lastReading?.unitPrice || lastReading?.service?.price || 0;
+        const unitPrice =
+          lastReading?.unitPrice || lastReading?.service?.price || 0;
         const cost = usage * unitPrice;
 
         utilitySettlement.push({
           serviceId: reading.serviceId,
-          serviceName: lastReading?.service?.name || `Service ${reading.serviceId}`,
+          serviceName:
+            lastReading?.service?.name || `Service ${reading.serviceId}`,
           usage,
           unitPrice,
-          cost
+          cost,
         });
       }
     }
 
-    const totalUtilityCost = utilitySettlement.reduce((sum, u) => sum + u.cost, 0);
+    const totalUtilityCost = utilitySettlement.reduce(
+      (sum, u) => sum + u.cost,
+      0,
+    );
 
     // 5. Calculate Deposit Adjustment
-    const depositDifference = (newDepositAmount || newRoom.depositPrice || 0) - contract.deposit;
+    const depositDifference =
+      (newDepositAmount || newRoom.depositPrice || 0) - contract.deposit;
 
     // 6. Thực hiện chuyển đổi trong Transaction
     return this.prisma.$transaction(async (tx) => {
-      
       // a. Create closing readings for OLD room
       if (oldRoomReadings && oldRoomReadings.length > 0) {
         const currentMonth = `${moveDateObj.getFullYear()}-${String(moveDateObj.getMonth() + 1).padStart(2, '0')}`;
-        
+
         for (const reading of oldRoomReadings) {
           const lastReading = await tx.serviceReading.findFirst({
             where: { contractId, serviceId: reading.serviceId },
             orderBy: { readingDate: 'desc' },
-            include: { service: true }
+            include: { service: true },
           });
 
           const lastIndex = lastReading?.newIndex || 0;
           const usage = Math.max(0, reading.indexValue - lastIndex);
-          const unitPrice = lastReading?.unitPrice || lastReading?.service?.price || 0;
+          const unitPrice =
+            lastReading?.unitPrice || lastReading?.service?.price || 0;
           const totalCost = usage * unitPrice;
 
           // Create final reading entry for old room
@@ -497,35 +521,39 @@ export class ContractsService {
               totalCost,
               readingDate: moveDateObj,
               isBilled: settlementOption === 'IMMEDIATE',
-              note: `Chỉ số chốt khi chuyển phòng sang ${newRoom.name}`
-            }
+              note: `Chỉ số chốt khi chuyển phòng sang ${newRoom.name}`,
+            },
           });
         }
       }
 
       // b. Create settlement invoice if IMMEDIATE
-      if (settlementOption === 'IMMEDIATE' && (oldRoomProRata > 0 || totalUtilityCost > 0)) {
+      if (
+        settlementOption === 'IMMEDIATE' &&
+        (oldRoomProRata > 0 || totalUtilityCost > 0)
+      ) {
         const currentMonth = `${moveDateObj.getFullYear()}-${String(moveDateObj.getMonth() + 1).padStart(2, '0')}`;
-        
+
         const lineItems: { name: string; amount: number }[] = [];
-        
+
         if (oldRoomProRata > 0) {
           lineItems.push({
             name: `Tiền phòng ${contract.room.name} (${daysAtOldRoom} ngày)`,
-            amount: Math.round(oldRoomProRata)
+            amount: Math.round(oldRoomProRata),
           });
         }
 
-        utilitySettlement.forEach(u => {
+        utilitySettlement.forEach((u) => {
           if (u.cost > 0) {
             lineItems.push({
               name: `${u.serviceName} (${u.usage} đơn vị)`,
-              amount: Math.round(u.cost)
+              amount: Math.round(u.cost),
             });
           }
         });
 
-        const totalAmount = Math.round(oldRoomProRata) + Math.round(totalUtilityCost);
+        const totalAmount =
+          Math.round(oldRoomProRata) + Math.round(totalUtilityCost);
 
         await tx.invoice.create({
           data: {
@@ -538,8 +566,8 @@ export class ContractsService {
             status: 'PUBLISHED',
             publishedAt: new Date(),
             note: `Hóa đơn thanh toán khi chuyển phòng từ ${contract.room.name} sang ${newRoom.name}`,
-            dueDate: new Date(moveDateObj.getTime() + 7 * 24 * 60 * 60 * 1000) // 7 days from move
-          }
+            dueDate: new Date(moveDateObj.getTime() + 7 * 24 * 60 * 60 * 1000), // 7 days from move
+          },
         });
       }
 
@@ -551,10 +579,11 @@ export class ContractsService {
             amount: Math.abs(depositDifference),
             type: depositDifference > 0 ? 'DEPOSIT' : 'OTHER',
             contractId,
-            note: depositDifference > 0 
-              ? `Thu thêm tiền cọc khi chuyển sang ${newRoom.name}` 
-              : `Hoàn tiền cọc chênh lệch khi chuyển sang ${newRoom.name}`
-          }
+            note:
+              depositDifference > 0
+                ? `Thu thêm tiền cọc khi chuyển sang ${newRoom.name}`
+                : `Hoàn tiền cọc chênh lệch khi chuyển sang ${newRoom.name}`,
+          },
         });
       }
 
@@ -564,21 +593,26 @@ export class ContractsService {
         data: {
           roomId: newRoomId,
           price: newRentPrice,
-          deposit: newDepositAmount !== undefined ? newDepositAmount : contract.deposit + depositDifference,
+          deposit:
+            newDepositAmount !== undefined
+              ? newDepositAmount
+              : contract.deposit + depositDifference,
         },
         include: {
           room: { include: { building: true } },
-          tenant: true
-        }
+          tenant: true,
+        },
       });
 
       // e. Create opening readings for NEW room
       if (newRoomReadings && newRoomReadings.length > 0) {
         const currentMonth = `${moveDateObj.getFullYear()}-${String(moveDateObj.getMonth() + 1).padStart(2, '0')}`;
-        
+
         for (const reading of newRoomReadings) {
-          const service = await tx.service.findUnique({ where: { id: reading.serviceId } });
-          
+          const service = await tx.service.findUnique({
+            where: { id: reading.serviceId },
+          });
+
           await tx.serviceReading.create({
             data: {
               month: currentMonth,
@@ -591,8 +625,8 @@ export class ContractsService {
               totalCost: 0,
               readingDate: moveDateObj,
               isBilled: false,
-              note: `Chỉ số đầu phòng mới ${newRoom.name}`
-            }
+              note: `Chỉ số đầu phòng mới ${newRoom.name}`,
+            },
           });
         }
       }
@@ -617,8 +651,8 @@ export class ContractsService {
           totalUtilityCost: Math.round(totalUtilityCost),
           depositDifference,
           settlementOption,
-          invoiceCreated: settlementOption === 'IMMEDIATE'
-        }
+          invoiceCreated: settlementOption === 'IMMEDIATE',
+        },
       };
     });
   }

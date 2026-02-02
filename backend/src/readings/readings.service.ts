@@ -39,7 +39,9 @@ export class ReadingsService {
     serviceId: number,
     month: string,
   ): Promise<PrepareReadingResponse> {
-    console.log(`Preparing reading for Contract ${contractId}, Service ${serviceId}, Month ${month}`);
+    console.log(
+      `Preparing reading for Contract ${contractId}, Service ${serviceId}, Month ${month}`,
+    );
 
     // 1. Validate format tháng (MM-YYYY)
     if (!/^\d{2}-\d{4}$/.test(month)) {

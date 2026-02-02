@@ -54,11 +54,17 @@ export class CreateReadingDto {
   @Min(0)
   maxMeterValue?: number;
 
-  @ApiPropertyOptional({ description: 'Link ảnh minh chứng (Mảng string)', example: ['url1', 'url2'] })
+  @ApiPropertyOptional({
+    description: 'Link ảnh minh chứng (Mảng string)',
+    example: ['url1', 'url2'],
+  })
   @IsOptional()
   imageUrls?: string[];
 
-  @ApiPropertyOptional({ description: 'Đã xác nhận bởi Admin chưa?', default: true })
+  @ApiPropertyOptional({
+    description: 'Đã xác nhận bởi Admin chưa?',
+    default: true,
+  })
   @IsOptional()
   @IsBoolean()
   isConfirmed?: boolean;

@@ -29,7 +29,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 @Roles('ADMIN')
 @Controller('tenants')
 export class TenantsController {
-  constructor(private readonly tenantsService: TenantsService) { }
+  constructor(private readonly tenantsService: TenantsService) {}
 
   @Post()
   @ApiOperation({

@@ -167,8 +167,8 @@ export default function Dashboard() {
           let invoicesSentCount = 0;
 
           currentInvoices.forEach((inv: any) => {
-            totalRevenue += inv.amount;
-            collected += inv.paidAmount;
+            totalRevenue += inv.totalAmount || 0;
+            collected += inv.paidAmount || 0;
             invoicesSentCount++;
 
             if (inv.status !== "PAID") {
@@ -176,14 +176,20 @@ export default function Dashboard() {
                 id: inv.id,
                 roomName: inv.room?.name,
                 tenantName: inv.contract?.tenant?.name,
-                amount: inv.amount,
-                paidAmount: inv.paidAmount,
+                amount: inv.totalAmount || 0,
+                paidAmount: inv.paidAmount || 0,
                 month: inv.month,
               });
             }
           });
           debt = totalRevenue - collected;
-          setCashFlow({ total: totalRevenue, collected, debt, growthRate: 0 });
+          // Ensure no NaN values
+          setCashFlow({
+            total: totalRevenue || 0,
+            collected: collected || 0,
+            debt: debt || 0,
+            growthRate: 0,
+          });
 
           setUnpaidInvoices(
             unpaidList.sort(
@@ -229,7 +235,7 @@ export default function Dashboard() {
                 if (monthlyRevenue.has(key)) {
                   const current = monthlyRevenue.get(key)!;
                   const paid = inv.paidAmount || 0;
-                  const debt = (inv.amount || 0) - paid;
+                  const debt = (inv.totalAmount || 0) - paid;
                   monthlyRevenue.set(key, {
                     collected: current.collected + paid,
                     debt: current.debt + debt,

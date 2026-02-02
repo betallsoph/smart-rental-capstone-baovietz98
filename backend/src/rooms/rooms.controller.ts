@@ -21,7 +21,14 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { RoomsService } from './rooms.service';
-import { CreateRoomDto, UpdateRoomDto, RoomStatus, BulkUpdatePriceDto, BulkCreateIssueDto, BulkNotifyDto } from './dto';
+import {
+  CreateRoomDto,
+  UpdateRoomDto,
+  RoomStatus,
+  BulkUpdatePriceDto,
+  BulkCreateIssueDto,
+  BulkNotifyDto,
+} from './dto';
 import { Roles } from '../auth/decorators/roles.decorator';
 
 @ApiTags('Rooms')
@@ -29,7 +36,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 @Roles('ADMIN')
 @Controller('rooms')
 export class RoomsController {
-  constructor(private readonly roomsService: RoomsService) { }
+  constructor(private readonly roomsService: RoomsService) {}
 
   @Post()
   @ApiOperation({
@@ -208,20 +215,20 @@ export class RoomsController {
   @ApiOperation({ summary: 'Cập nhật giá đồng loạt' })
   @ApiBody({ type: BulkUpdatePriceDto })
   bulkUpdatePrice(@Body() dto: BulkUpdatePriceDto) {
-      return this.roomsService.bulkUpdatePrice(dto);
+    return this.roomsService.bulkUpdatePrice(dto);
   }
 
   @Post('bulk/issues')
   @ApiOperation({ summary: 'Tạo sự cố đồng loạt' })
   @ApiBody({ type: BulkCreateIssueDto })
   bulkCreateIssues(@Body() dto: BulkCreateIssueDto) {
-      return this.roomsService.bulkCreateIssues(dto);
+    return this.roomsService.bulkCreateIssues(dto);
   }
 
   @Post('bulk/notify')
   @ApiOperation({ summary: 'Gửi thông báo đồng loạt (Zalo)' })
   @ApiBody({ type: BulkNotifyDto })
   bulkNotify(@Body() dto: BulkNotifyDto) {
-      return this.roomsService.bulkNotify(dto);
+    return this.roomsService.bulkNotify(dto);
   }
 }

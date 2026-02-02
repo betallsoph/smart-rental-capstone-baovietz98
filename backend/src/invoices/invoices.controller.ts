@@ -9,7 +9,13 @@ import {
   Query,
   ParseIntPipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiQuery, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiQuery,
+  ApiParam,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { InvoiceStatus } from '@prisma/client';
 import { InvoicesService } from './invoices.service';
 import { GenerateInvoiceDto, UpdateInvoiceDto, RecordPaymentDto } from './dto';
@@ -21,7 +27,7 @@ import { Public } from '../auth/decorators/public.decorator';
 @Roles('ADMIN')
 @Controller('invoices')
 export class InvoicesController {
-  constructor(private readonly invoicesService: InvoicesService) { }
+  constructor(private readonly invoicesService: InvoicesService) {}
 
   /**
    * BƯỚC 1: Xem trước hóa đơn (Preview)
@@ -200,8 +206,14 @@ export class InvoicesController {
    */
   @Public()
   @Get('public/:code')
-  @ApiOperation({ summary: 'Lấy chi tiết hóa đơn (Public - Không cần đăng nhập)' })
-  @ApiParam({ name: 'code', example: 'uuid-code', description: 'Mã truy cập hóa đơn (accessCode)' })
+  @ApiOperation({
+    summary: 'Lấy chi tiết hóa đơn (Public - Không cần đăng nhập)',
+  })
+  @ApiParam({
+    name: 'code',
+    example: 'uuid-code',
+    description: 'Mã truy cập hóa đơn (accessCode)',
+  })
   findByAccessCode(@Param('code') code: string) {
     return this.invoicesService.findByAccessCode(code);
   }

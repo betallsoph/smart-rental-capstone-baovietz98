@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 
+// @ts-ignore
 const nextConfig: NextConfig = {
   /* config options here */
   eslint: {
@@ -8,6 +9,7 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  output: 'standalone',
 };
 
 export default nextConfig;

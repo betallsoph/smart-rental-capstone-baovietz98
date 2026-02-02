@@ -1,19 +1,55 @@
 version: '3.8'
+
 services:
+  # Database Service
   db:
     image: postgres:15-alpine
     container_name: quanlytro_db
     restart: always
     environment:
-      POSTGRES_USER: admin        # Tên đăng nhập
-      POSTGRES_PASSWORD: admin    # Mật khẩu
-      POSTGRES_DB: quanlytro_db   # Tên Database
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: quanlytro_db
     ports:
       - '5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  # Tặng kèm bạn: pgAdmin (Giao diện quản lý DB xịn như Workbench)
+  # Backend Service (NestJS)
+  server:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: quanlytro_backend
+    restart: always
+    environment:
+      DATABASE_URL: postgresql://admin:admin@db:5432/quanlytro_db
+      PORT: 4000
+      # Add other env vars here (JWT_SECRET, CLOUDINARY_*, etc.)
+    ports:
+      - '4000:4000'
+    depends_on:
+      - db
+
+  # Frontend Service (Next.js)
+  client:
+    build:
+      context: ./web-admin
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000}
+    container_name: quanlytro_frontend
+    restart: always
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:4000 # Client-side still needs to reach server via public URL
+      # If using server-side rendering talking to backend internal network:
+      # API_URL: http://server:4000 
+    ports:
+      - '3000:3000'
+    depends_on:
+      - server
+
+  # Optional: pgAdmin
   pgadmin:
     image: dpage/pgadmin4
     container_name: pgadmin4_container

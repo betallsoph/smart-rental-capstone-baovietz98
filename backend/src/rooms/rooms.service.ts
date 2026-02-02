@@ -5,11 +5,18 @@ import {
 } from '@nestjs/common';
 import { RoomStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateRoomDto, UpdateRoomDto, BulkUpdatePriceDto, BulkCreateIssueDto, BulkNotifyDto, PriceUpdateType } from './dto';
+import {
+  CreateRoomDto,
+  UpdateRoomDto,
+  BulkUpdatePriceDto,
+  BulkCreateIssueDto,
+  BulkNotifyDto,
+  PriceUpdateType,
+} from './dto';
 
 @Injectable()
 export class RoomsService {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService) {}
 
   /**
    * Tạo phòng mới
@@ -163,23 +170,27 @@ export class RoomsService {
    */
   async updateStatus(id: number, status: RoomStatus) {
     const room = await this.findOne(id);
-    
+
     // Strict Validation Logic (Lozido Style)
     // 1. Prevent manual switch to RENTED (Must create contract)
     if (status === RoomStatus.RENTED && room.status !== RoomStatus.RENTED) {
-       throw new BadRequestException('Không thể chuyển thủ công sang ĐANG Ở. Vui lòng tạo Hợp Đồng mới.');
+      throw new BadRequestException(
+        'Không thể chuyển thủ công sang ĐANG Ở. Vui lòng tạo Hợp Đồng mới.',
+      );
     }
 
     // 2. Prevent switch to AVAILABLE if Active Contract exists
     if (status === RoomStatus.AVAILABLE && room.status === RoomStatus.RENTED) {
-       const activeContracts = room.contracts.filter(c => c.isActive);
-       if (activeContracts.length > 0) {
-          throw new BadRequestException('Phòng đang có hợp đồng hiệu lực. Vui lòng thanh lý hợp đồng trước khi chuyển sang TRỐNG.');
-       }
+      const activeContracts = room.contracts.filter((c) => c.isActive);
+      if (activeContracts.length > 0) {
+        throw new BadRequestException(
+          'Phòng đang có hợp đồng hiệu lực. Vui lòng thanh lý hợp đồng trước khi chuyển sang TRỐNG.',
+        );
+      }
     }
 
     // 3. Warning for MAINTENANCE (Allowed but careful) - Frontend handles warning, Backend allows.
-    
+
     return this.prisma.room.update({
       where: { id },
       data: { status },
@@ -229,14 +240,14 @@ export class RoomsService {
    */
   async bulkUpdatePrice(dto: BulkUpdatePriceDto) {
     const { roomIds, type, value } = dto;
-    
+
     // Validate rooms exist
     const rooms = await this.prisma.room.findMany({
       where: { id: { in: roomIds } },
     });
 
     if (rooms.length !== roomIds.length) {
-       throw new BadRequestException('Một số phòng không tồn tại');
+      throw new BadRequestException('Một số phòng không tồn tại');
     }
 
     const updates = rooms.map((room) => {
@@ -248,7 +259,7 @@ export class RoomsService {
       } else if (type === PriceUpdateType.FIXED_SET) {
         newPrice = value;
       }
-      
+
       return this.prisma.room.update({
         where: { id: room.id },
         data: { price: newPrice },
@@ -262,20 +273,20 @@ export class RoomsService {
    * Tạo sự cố đồng loạt
    */
   async bulkCreateIssues(dto: BulkCreateIssueDto) {
-      const { roomIds, title, description } = dto;
+    const { roomIds, title, description } = dto;
 
-      const creations = roomIds.map(roomId => 
-          this.prisma.issue.create({
-              data: {
-                  title,
-                  description: description || 'Báo cáo hàng loạt',
-                  status: 'OPEN',
-                  roomId
-              }
-          })
-      );
+    const creations = roomIds.map((roomId) =>
+      this.prisma.issue.create({
+        data: {
+          title,
+          description: description || 'Báo cáo hàng loạt',
+          status: 'OPEN',
+          roomId,
+        },
+      }),
+    );
 
-      return await this.prisma.$transaction(creations);
+    return await this.prisma.$transaction(creations);
   }
 
   /**
@@ -283,26 +294,28 @@ export class RoomsService {
    */
   async bulkNotify(dto: BulkNotifyDto) {
     const { roomIds, message } = dto;
-    
+
     // Simulate finding tenants involved
     const contracts = await this.prisma.contract.findMany({
-        where: { 
-            roomId: { in: roomIds },
-            isActive: true
-        },
-        include: { tenant: true }
-    });
-    
-    // Log to console to simulate sending
-    console.log(`[ZALO MOCK] Sending message to ${contracts.length} tenants: "${message}"`);
-    contracts.forEach(c => {
-        console.log(` -> To: ${c.tenant.fullName} (${c.tenant.phone})`);
+      where: {
+        roomId: { in: roomIds },
+        isActive: true,
+      },
+      include: { tenant: true },
     });
 
-    return { 
-        success: true, 
-        sentCount: contracts.length, 
-        message: 'Đã gửi thông báo thành công (Mô phỏng)' 
+    // Log to console to simulate sending
+    console.log(
+      `[ZALO MOCK] Sending message to ${contracts.length} tenants: "${message}"`,
+    );
+    contracts.forEach((c) => {
+      console.log(` -> To: ${c.tenant.fullName} (${c.tenant.phone})`);
+    });
+
+    return {
+      success: true,
+      sentCount: contracts.length,
+      message: 'Đã gửi thông báo thành công (Mô phỏng)',
     };
   }
 }

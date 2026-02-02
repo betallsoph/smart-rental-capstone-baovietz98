@@ -1,4 +1,13 @@
-import { IsInt, IsOptional, IsEnum, IsNumber, IsString, IsArray, ValidateNested, IsDateString } from 'class-validator';
+import {
+  IsInt,
+  IsOptional,
+  IsEnum,
+  IsNumber,
+  IsString,
+  IsArray,
+  ValidateNested,
+  IsDateString,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { RoomStatus } from '@prisma/client';
 import { Type } from 'class-transformer';
@@ -15,8 +24,8 @@ export class MeterReadingDto {
 }
 
 export enum SettlementOption {
-  IMMEDIATE = 'IMMEDIATE',  // Create settlement invoice now
-  DEFER = 'DEFER',          // Add to next month's invoice
+  IMMEDIATE = 'IMMEDIATE', // Create settlement invoice now
+  DEFER = 'DEFER', // Add to next month's invoice
 }
 
 export class MoveContractDto {
@@ -32,28 +41,33 @@ export class MoveContractDto {
   @IsDateString()
   moveDate: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'Trạng thái của phòng cũ sau khi chuyển đi',
     enum: RoomStatus,
-    default: RoomStatus.MAINTENANCE
+    default: RoomStatus.MAINTENANCE,
   })
   @IsOptional()
   @IsEnum(RoomStatus)
   oldRoomStatus?: RoomStatus = RoomStatus.MAINTENANCE;
 
-  @ApiProperty({ description: 'Giá thuê mới (mặc định = giá phòng mới, có thể sửa)' })
+  @ApiProperty({
+    description: 'Giá thuê mới (mặc định = giá phòng mới, có thể sửa)',
+  })
   @IsNumber()
   newRentPrice: number;
 
-  @ApiProperty({ description: 'Số tiền cọc mới (nếu điều chỉnh)', required: false })
+  @ApiProperty({
+    description: 'Số tiền cọc mới (nếu điều chỉnh)',
+    required: false,
+  })
   @IsOptional()
   @IsNumber()
   newDepositAmount?: number;
 
-  @ApiProperty({ 
-    description: 'Chỉ số chốt của phòng CŨ (đóng sổ)', 
+  @ApiProperty({
+    description: 'Chỉ số chốt của phòng CŨ (đóng sổ)',
     type: [MeterReadingDto],
-    required: false 
+    required: false,
   })
   @IsOptional()
   @IsArray()
@@ -61,10 +75,10 @@ export class MoveContractDto {
   @Type(() => MeterReadingDto)
   oldRoomReadings?: MeterReadingDto[];
 
-  @ApiProperty({ 
-    description: 'Chỉ số đầu của phòng MỚI', 
+  @ApiProperty({
+    description: 'Chỉ số đầu của phòng MỚI',
     type: [MeterReadingDto],
-    required: false 
+    required: false,
   })
   @IsOptional()
   @IsArray()
@@ -72,10 +86,10 @@ export class MoveContractDto {
   @Type(() => MeterReadingDto)
   newRoomReadings?: MeterReadingDto[];
 
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'Phương thức thanh toán công nợ phòng cũ',
     enum: SettlementOption,
-    default: SettlementOption.DEFER
+    default: SettlementOption.DEFER,
   })
   @IsOptional()
   @IsEnum(SettlementOption)

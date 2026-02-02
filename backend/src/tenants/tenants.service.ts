@@ -179,6 +179,12 @@ export class TenantsService {
       );
     }
 
+    // Xóa các dữ liệu phụ liên quan trước
+    await this.prisma.vehicle.deleteMany({ where: { tenantId: id } });
+    await this.prisma.guestRequest.deleteMany({ where: { tenantId: id } });
+    await this.prisma.notification.deleteMany({ where: { tenantId: id } });
+
+    // Cuối cùng xóa tenant
     return this.prisma.tenant.delete({
       where: { id },
     });

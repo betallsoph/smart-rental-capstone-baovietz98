@@ -21,6 +21,7 @@ import axiosClient from "@/lib/axios-client";
 import { formatCurrency } from "../../lib/utils";
 import dayjs from "dayjs";
 import { Empty, Spin } from "antd";
+import { notificationsApi, Notification } from "@/lib/api/notifications";
 
 interface Activity {
   id: string | number;
@@ -39,6 +40,7 @@ export default function TenantDashboard() {
   const [loading, setLoading] = useState(true);
   const [bill, setBill] = useState<any>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [notification, setNotification] = useState<Notification | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -48,15 +50,24 @@ export default function TenantDashboard() {
     try {
       setLoading(true);
 
-      // 1. Fetch Profile & Issues in parallel
-      const [profileRes, issuesRes] = await Promise.all([
+      // 1. Fetch Profile & Issues & Notification in parallel
+      const [profileRes, issuesRes, notifRes] = await Promise.all([
         axiosClient.get("/auth/profile"),
         axiosClient.get("/issues"),
+        notificationsApi.getAll().catch(() => ({ data: [] })),
       ]);
 
       const updatedUser = profileRes.data;
       setUser(updatedUser);
       localStorage.setItem("user", JSON.stringify(updatedUser)); // Update cache
+
+      // Check if we have any notifications
+      if (Array.isArray(notifRes.data) && notifRes.data.length > 0) {
+        setNotification(notifRes.data[0]); // Take the newest one
+      } else if (!Array.isArray(notifRes.data) && notifRes.data) {
+        // Fallback if it somehow returns single object
+        setNotification(notifRes.data as any);
+      }
 
       const issues = issuesRes.data || [];
       const tenant = updatedUser.tenant;
@@ -77,7 +88,6 @@ export default function TenantDashboard() {
           invoices = contractRes.data.invoices || [];
 
           // Find latest UNPAID bill for the Card
-          // Sort by month desc
           const sortedInvoices = [...invoices].sort(
             (a, b) =>
               new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
@@ -129,7 +139,7 @@ export default function TenantDashboard() {
           subtitle: dayjs(iss.createdAt).format("DD/MM/YYYY"),
           date: iss.createdAt,
           status: iss.status,
-          link: `/tenant/requests/issues`, // Could go to detail if supported
+          link: `/tenant/requests/issues`,
         });
       });
 
@@ -138,8 +148,8 @@ export default function TenantDashboard() {
         (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
       );
 
-      // Take top 5
-      setActivities(rawActivities.slice(0, 5));
+      // Take top 3 for cleaner dashboard
+      setActivities(rawActivities.slice(0, 3));
     } catch (error) {
       console.error("Dashboard fetch error:", error);
     } finally {
@@ -206,30 +216,47 @@ export default function TenantDashboard() {
             </h1>
           </div>
         </div>
-        <div className="bg-white p-2.5 rounded-full border border-slate-100 shadow-sm relative active:scale-95 transition-all cursor-pointer hover:shadow-md group">
+        <div
+          onClick={() => router.push("/tenant/bulletin")}
+          className="bg-white p-2.5 rounded-full border border-slate-100 shadow-sm relative active:scale-95 transition-all cursor-pointer hover:shadow-md group"
+        >
           <Bell
             size={20}
             className="text-slate-600 group-hover:text-indigo-600 transition-colors"
           />
-          {/* Only show dot if there are active notifications (Mock logic for now) */}
-          {/* <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span> */}
+          {/* Show red dot if there is a notification */}
+          {notification && !notification.isRead && (
+            <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+          )}
+          {/* Fallback: show dot if any notification exists for now */}
+          {notification && (
+            <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+          )}
         </div>
       </div>
 
-      {/* 2. Notification Banner (Static for now, or could be dynamic) */}
-      <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 shadow-sm flex items-start gap-4 relativer">
-        <div className="bg-amber-100 rounded-full p-2 shrink-0 text-amber-600">
-          <Megaphone size={16} />
+      {/* 2. Notification Banner */}
+      {notification ? (
+        <div
+          onClick={() => router.push("/tenant/bulletin")}
+          className="bg-amber-50 border border-amber-100 rounded-2xl p-4 shadow-sm flex items-start gap-4 relativer cursor-pointer active:scale-[0.99] transition-transform hover:shadow-md"
+        >
+          <div className="bg-amber-100 rounded-full p-2 shrink-0 text-amber-600">
+            <Megaphone size={16} />
+          </div>
+          <div className="flex-1">
+            <p className="text-amber-700 text-xs font-bold uppercase mb-1">
+              {notification.title}
+            </p>
+            <p className="text-slate-700 text-sm font-medium leading-relaxed line-clamp-2">
+              {notification.content}
+            </p>
+          </div>
         </div>
-        <div className="flex-1">
-          <p className="text-amber-700 text-xs font-bold uppercase mb-1">
-            Thông báo từ BQL
-          </p>
-          <p className="text-slate-700 text-sm font-medium leading-relaxed">
-            Hệ thống đang bảo trì dịch vụ thanh toán từ 0H-2H sáng mai.
-          </p>
-        </div>
-      </div>
+      ) : (
+        // Fallback or Empty state if no notification
+        <div className="hidden"></div>
+      )}
 
       {/* 3. Bill Status Card */}
       {bill ? (
@@ -309,7 +336,7 @@ export default function TenantDashboard() {
             bg="bg-pink-50"
             title="Bảng tin"
             desc="Thông báo BQL"
-            onClick={() => router.push("/tenant/news")} // Assuming page exists or placeholder
+            onClick={() => router.push("/tenant/bulletin")}
           />
         </div>
       </div>
@@ -320,7 +347,7 @@ export default function TenantDashboard() {
           <h3 className="font-bold text-slate-900 text-lg">Gần đây</h3>
           {activities.length > 0 && (
             <Link
-              href="#"
+              href="/tenant/activity"
               className="text-sm font-medium text-indigo-600 hover:text-indigo-700 hover:underline flex items-center gap-0.5"
             >
               Xem tất cả <ChevronRight size={16} />

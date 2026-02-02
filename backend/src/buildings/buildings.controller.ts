@@ -27,7 +27,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 @Roles('ADMIN')
 @Controller('buildings')
 export class BuildingsController {
-  constructor(private readonly buildingsService: BuildingsService) { }
+  constructor(private readonly buildingsService: BuildingsService) {}
 
   @Post()
   @ApiOperation({
